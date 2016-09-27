@@ -7,6 +7,7 @@
 */
 
 #include <unistd.h>     // fork(), execvp()
+#include <string.h>			// strcmp()
 #include <stdio.h>      // printf(), scanf(), setbuf(), perror()
 #include <stdlib.h>     // malloc()
 #include <sys/types.h>  // pid_t 
@@ -37,7 +38,7 @@ int stringLength(char* s) {
 */
 int isValidCommand(char* command) {
 	for (int i = 0; i < COMMANDS_LENGTH; i++) {
-		if (command == VALID_COMMANDS[i]) {
+		if (strcmp(command, VALID_COMMANDS[i]) == 0) {
 			return TRUE;
 		}
 	}
@@ -56,7 +57,7 @@ int isValidProcess(pid_t pid) {
 	rawCommand: raw user input from the command line
 	returns an array with parsed command and pid
 */
-char* parseCommand(char* rawCommand) {
+char** parseCommand(char* rawCommand) {
 	char* result[2];
 	return result;
 }
@@ -124,7 +125,7 @@ void bglist() {
 	lists information relevant to a process pid
 */
 void pstat(pid_t pid) {
-	if (isValidProcess(pid) == TRUE) {
+	if (isValidProcess(pid)) {
 		char* comm = (char *)malloc(sizeof(char));
 		char* state = (char *)malloc(sizeof(char));
 		char* utime = (char *)malloc(sizeof(char));
@@ -160,47 +161,47 @@ int main() {
 
 	while (cont == 'y') {
 		char* rawCommand = (char *)malloc(sizeof(char));
-		char* parsedCommand = (char *)malloc(sizeof(char));
+		char** parsedCommand;
 
 		while (TRUE) {
 			printf("PMan: > ");
 			scanf("%s", rawCommand);
-			int* parsedCommand = parseCommand(rawCommand);
-			if (isValidCommand(rawCommand)) {
+			// char* parsedCommand[] = parseCommand(rawCommand);
+			char* parsedCommand[] = {rawCommand};
+			if (isValidCommand(parsedCommand[0])) {
 				break;
 			} else {
-				printf("PMan: > %s: command not found\n", parsedCommand);
+				printf("PMan: > %s: command not found\n", parsedCommand[0]);
 			}
 		}
 
 		printf("Valid command. Continuing...\n");
-		
-		pid = fork();
+		// pid = fork();
 
-		switch (parsedCommand[0]) {
-			case 0:
-				bg();
-				break;
-			case 1:
-				bgkill(pid);
-				break;
-			case 2:
-				bgstop(pid);
-				break;
-			case 3:
-				bgstart(pid);
-				break;
-			case 4:
-				bglist();
-				break;
-			case 5:
-				pstat(pid);
-				break;
-			default:
-				printf("Default switch. Should never get here.\n");
-				break;
-		}
-
+		// int commandInt = commandToInt(parsedCommand[0]);
+		// switch (commandInt) {
+		// 	case 0:
+		// 		// bg();
+		// 		break;
+		// 	case 1:
+		// 		bgkill(pid);
+		// 		break;
+		// 	case 2:
+		// 		bgstop(pid);
+		// 		break;
+		// 	case 3:
+		// 		bgstart(pid);
+		// 		break;
+		// 	case 4:
+		// 		bglist();
+		// 		break;
+		// 	case 5:
+		// 		pstat(pid);
+		// 		break;
+		// 	default:
+		// 		printf("Default switch. Should never get here.\n");
+		// 		break;
+		// }
 
 		// if (pid == 0) {
 		// 	//Child process
