@@ -10,7 +10,7 @@
 #include <string.h>			// strcmp()
 #include <stdio.h>      // printf(), scanf(), setbuf(), perror()
 #include <stdlib.h>     // malloc()
-#include <sys/types.h>  // pid_t 
+#include <sys/types.h>  // pid_t
 #include <sys/wait.h>   // waitpid()
 #include <signal.h>     // kill(), SIGTERM, SIGKILL, SIGSTOP, SIGCONT
 #include <errno.h>      // errno
@@ -21,6 +21,11 @@
 #define FALSE 0
 #define COMMANDS_LENGTH 6
 char* VALID_COMMANDS[] = {"bg", "bgkill", "bgstop", "bgstart", "bglist", "pstat"};
+
+typedef struct proc_t {
+	pid_t pid;
+	char *cmd;
+} proc_t;
 
 /* ---------- Helper functions ---------- */
 
@@ -55,20 +60,22 @@ int isValidProcess(pid_t pid) {
 
 /*
 	rawCommand: raw user input from the command line
-	returns an array with parsed command and pid
+	returns an array containing the parsed command and its arguments
 */
-char** parseCommand(char* rawCommand) {
-	char* result[2];
-	return result;
-}
+// char** parseCommand(char* rawCommand) {
+// 	char* result[2];
+// 	return result;
+// }
 
 /*
 	command: a command (e.g. "bg", "bgkill", etc.)
 	returns an integer mapping to that command or -1 if the command is invalid
 */
 int commandToInt(char* command) {
+	printf("inside\n");
 	for (int i = 0; i < COMMANDS_LENGTH; i++) {
-		if (command == VALID_COMMANDS[i]) {
+		printf("%d\n", strcmp(command, VALID_COMMANDS[i]));
+		if (strcmp(command, VALID_COMMANDS[i]) == 0) {
 			return i;
 		}
 	}
@@ -83,7 +90,7 @@ int commandToInt(char* command) {
 	returns a pid for the executed command
 */
 void bg(char* command, char* args[]) {
-
+	// use fork() and execvp()
 }
 
 /*
@@ -91,7 +98,7 @@ void bg(char* command, char* args[]) {
 	sends the TERM signal to a process pid to terminate it
 */
 void bgkill(pid_t pid) {
-	
+	// SIGTERM
 }
 
 /*
@@ -99,7 +106,7 @@ void bgkill(pid_t pid) {
 	sends the STOP signal to a process pid to temporarily stop it
 */
 void bgstop(pid_t pid) {
-	
+	// SIGSTOP
 }
 
 /*
@@ -107,7 +114,7 @@ void bgstop(pid_t pid) {
 	sends the CONT signal to a stopped process pid to restart it
 */
 void bgstart(pid_t pid) {
-	
+	// SIGCONT
 }
 
 /*
@@ -149,13 +156,7 @@ void pstat(pid_t pid) {
 /* ---------- Main ---------- */
 
 int main() {
-	// struct for process shown in Tutorial
-	// typedef struct proc_t {
-	// 	pid_t pid;
-	// 	char *cmd;
-	// } proc_t;
 
-	pid_t pid;          // The ID of child process
 	int status;
 	char cont = 'y';   // y - continue to create new child process; n - exit.
 
@@ -175,33 +176,38 @@ int main() {
 			}
 		}
 
-		printf("Valid command. Continuing...\n");
-		// pid = fork();
-
 		// int commandInt = commandToInt(parsedCommand[0]);
-		// switch (commandInt) {
-		// 	case 0:
-		// 		// bg();
-		// 		break;
-		// 	case 1:
-		// 		bgkill(pid);
-		// 		break;
-		// 	case 2:
-		// 		bgstop(pid);
-		// 		break;
-		// 	case 3:
-		// 		bgstart(pid);
-		// 		break;
-		// 	case 4:
-		// 		bglist();
-		// 		break;
-		// 	case 5:
-		// 		pstat(pid);
-		// 		break;
-		// 	default:
-		// 		printf("Default switch. Should never get here.\n");
-		// 		break;
-		// }
+		int commandInt = 0;
+
+		// pid_t pid = atoi(parsedCommand[1]);
+		pid_t pid = 123;
+
+		char* process = "cat";
+		char* arguments[] = {"foo.txt"};
+
+		switch (commandInt) {
+			case 0:
+				bg(process, arguments);
+				break;
+			case 1:
+				bgkill(pid);
+				break;
+			case 2:
+				bgstop(pid);
+				break;
+			case 3:
+				bgstart(pid);
+				break;
+			case 4:
+				bglist();
+				break;
+			case 5:
+				pstat(pid);
+				break;
+			default:
+				printf("Default switch. Should never get here.\n");
+				break;
+		}
 
 		// if (pid == 0) {
 		// 	//Child process
