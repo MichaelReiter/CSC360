@@ -6,28 +6,38 @@
 	V00831568
 */
 
-#include <unistd.h>     // fork(), execvp()
-#include <string.h>			// strcmp()
-#include <stdio.h>      // printf(), scanf(), setbuf(), perror()
-#include <stdlib.h>     // malloc()
-#include <sys/types.h>  // pid_t
-#include <sys/wait.h>   // waitpid()
-#include <signal.h>     // kill(), SIGTERM, SIGKILL, SIGSTOP, SIGCONT
-#include <errno.h>      // errno
+#include <unistd.h>            // fork(), execvp()
+#include <string.h>			       // strcmp()
+#include <stdio.h>             // printf(), scanf(), setbuf(), perror()
+#include <stdlib.h>            // malloc()
+#include <sys/types.h>         // pid_t
+#include <sys/wait.h>          // waitpid()
+#include <signal.h>            // kill(), SIGTERM, SIGKILL, SIGSTOP, SIGCONT
+#include <errno.h>             // errno
+#include <readline/readline.h> // readline
+// #include <readline/history.h>
 
 /* ---------- Constants ---------- */
 
 #define TRUE 1
 #define FALSE 0
+#define MAX_INPUT_SIZE 128
 #define COMMANDS_LENGTH 6
-char* VALID_COMMANDS[] = {"bg", "bgkill", "bgstop", "bgstart", "bglist", "pstat"};
+char* VALID_COMMANDS[] = {
+	"bg",
+	"bgkill",
+	"bgstop",
+	"bgstart",
+	"bglist",
+	"pstat"
+};
 
 typedef struct proc_t {
 	pid_t pid;
 	char *cmd;
 } proc_t;
 
-/* ---------- Helper functions ---------- */
+/* ---------- General Helper functions ---------- */
 
 /*
 	s: a string
@@ -72,9 +82,7 @@ int isValidProcess(pid_t pid) {
 	returns an integer mapping to that command or -1 if the command is invalid
 */
 int commandToInt(char* command) {
-	printf("inside\n");
 	for (int i = 0; i < COMMANDS_LENGTH; i++) {
-		printf("%d\n", strcmp(command, VALID_COMMANDS[i]));
 		if (strcmp(command, VALID_COMMANDS[i]) == 0) {
 			return i;
 		}
@@ -153,106 +161,71 @@ void pstat(pid_t pid) {
 	}
 }
 
+/* ---------- Main helper functions ---------- */
+
+/*
+	input: a pointer to an array of strings to contain the tokenized user input
+	tokenizes user input and stores it in input
+	returns TRUE on success, FALSE on error
+*/
+int getUserInput(char** userInput) {
+	char* rawInput = readline("PMan: > ");
+	if (strcmp(rawInput, "") == 0) {
+		return FALSE;
+	}
+	char* token = strtok(rawInput, " ");
+	for (int i = 0; i < MAX_INPUT_SIZE; i++) {
+		userInput[i] = token;
+		token = strtok(NULL, " ");
+	}
+	return TRUE;
+}
+
+/*
+	input: a pointer to an array of strings containing the tokenized user input
+	executes commands from input
+*/
+void executeUserInput(char** userInput) {
+	int commandInt = commandToInt(userInput[0]);
+
+	switch (commandInt) {
+		case 0:
+			// char* process = "cat";
+			// char* arguments[] = {"foo.txt"};
+			// bg(process, arguments);
+			break;
+		case 1:
+			// pid_t pid = atoi(userInput[1]);
+			// bgkill(pid);
+			break;
+		case 2:
+			// bgstop(pid);
+			break;
+		case 3:
+			// bgstart(pid);
+			break;
+		case 4:
+			bglist();
+			break;
+		case 5:
+			// pstat(pid);
+			break;
+		default:
+			printf("PMan: > %s:\tcommand not found\n", userInput[0]);
+			break;
+	}
+}
+
 /* ---------- Main ---------- */
 
 int main() {
-
-	int status;
-	char cont = 'y';   // y - continue to create new child process; n - exit.
-
-	while (cont == 'y') {
-		char* rawCommand = (char *)malloc(sizeof(char));
-		char** parsedCommand;
-
-		while (TRUE) {
-			printf("PMan: > ");
-			scanf("%s", rawCommand);
-			// char* parsedCommand[] = parseCommand(rawCommand);
-			char* parsedCommand[] = {rawCommand};
-			if (isValidCommand(parsedCommand[0])) {
-				break;
-			} else {
-				printf("PMan: > %s: command not found\n", parsedCommand[0]);
-			}
+	while (TRUE) {
+		char* userInput[MAX_INPUT_SIZE];
+		int success = getUserInput(userInput);
+		if (success) {
+			executeUserInput(userInput);
 		}
+	}
 
-		// int commandInt = commandToInt(parsedCommand[0]);
-		int commandInt = 0;
-
-		// pid_t pid = atoi(parsedCommand[1]);
-		pid_t pid = 123;
-
-		char* process = "cat";
-		char* arguments[] = {"foo.txt"};
-
-		switch (commandInt) {
-			case 0:
-				bg(process, arguments);
-				break;
-			case 1:
-				bgkill(pid);
-				break;
-			case 2:
-				bgstop(pid);
-				break;
-			case 3:
-				bgstart(pid);
-				break;
-			case 4:
-				bglist();
-				break;
-			case 5:
-				pstat(pid);
-				break;
-			default:
-				printf("Default switch. Should never get here.\n");
-				break;
-		}
-
-		// if (pid == 0) {
-		// 	//Child process
-		// 	printf("...\n");
-		// 	char *argv_execvp[] = {"inf", tag, interval, NULL};
-		// 	if (execvp("./inf", argv_execvp) < 0) {
-		// 		perror("Error on execvp");
-		// 	}
-		// 	printf("Child finished.\n");  // This line won't work since exec() successfully runs and replaces the code of child process
-		// 	exit(EXIT_FAILURE); 
-		// } else if (pid > 0) {
-		// 	//parent process
-		// 	printf("\nParent has created a new child with tag = %s and interval = %s.\n", tag, interval);
-		// 	printf("\nThe pid of the child process is: %d\n", pid);
-			
-		// 	int opts = WNOHANG | WUNTRACED | WCONTINUED;
-		// 	int retVal;
-	
-		// 	retVal = waitpid(pid, &status, opts);
-		// 	if (retVal == -1) { 
-		// 		perror("Fail at waitpid"); 
-		// 		exit(EXIT_FAILURE); 
-		// 	}
-
-		// 	// Macros below can be found by "$ man 2 waitpid"
-		// 	if (WIFEXITED(status)) {
-		// 		printf("Normal, status code=%d\n", WEXITSTATUS(status));  // Display the status code of child process
-		// 	} else if (WIFSIGNALED(status)) {
-		// 		printf("killed by signal %d\n", WTERMSIG(status));
-		// 	} else if (WIFSTOPPED(status)) {
-		// 		printf("stopped by signal %d\n", WSTOPSIG(status));
-		// 	} else if (WIFCONTINUED(status)) {    
-		// 		printf("continued\n");   
-		// 	}
-
-		// 	sleep(10);
-		// 	kill(pid, SIGKILL);
-		// } else {  // Fail to create new process
-		// 	perror("\nFailed to create a new process.\n");
-		// }
-		// printf("Do you want to continue? (y/n)\n ");
-		// setbuf(stdin, NULL);  // clear the buffer. You could try to remove this line to see the result
-		// scanf("%c", &cont);
-	} // end of while loop
-
-	printf("Parent process stops.\n");
 	return 0;
 }
