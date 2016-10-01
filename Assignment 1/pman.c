@@ -7,13 +7,13 @@
 */
 
 #include <unistd.h>            // fork(), execvp()
-#include <string.h>			       // strcmp()
+#include <string.h>            // strcmp()
+#include <ctype.h>             // isdigit()
 #include <stdio.h>             // printf(), scanf(), setbuf(), perror()
 #include <stdlib.h>            // malloc()
 #include <sys/types.h>         // pid_t
 #include <sys/wait.h>          // waitpid()
 #include <signal.h>            // kill(), SIGTERM, SIGKILL, SIGSTOP, SIGCONT
-#include <errno.h>             // errno
 #include <readline/readline.h> // readline
 // #include <readline/history.h>
 
@@ -32,32 +32,33 @@ char* VALID_COMMANDS[] = {
 	"pstat"
 };
 
-typedef struct proc_t {
+/* ---------- Typedefs ---------- */
+
+typedef enum status_t {
+  running,
+  stopped
+} status_t;
+
+typedef struct node {
 	pid_t pid;
-	char *cmd;
-} proc_t;
+	char* arg;
+	status_t status;
+	struct node* next;
+} node;
 
 /* ---------- General Helper functions ---------- */
 
 /*
 	s: a string
-	returns the length of s
+	returns TRUE if the string is a valid integer, FALSE otherwise
 */
-int stringLength(char* s) {
-	return sizeof(s) / sizeof(s[0]);
-}
-
-/*
-	command: a command (e.g. "bg", "bgkill", etc.)
-	returns TRUE if the command is valid, FALSE otherwise
-*/
-int isValidCommand(char* command) {
-	for (int i = 0; i < COMMANDS_LENGTH; i++) {
-		if (strcmp(command, VALID_COMMANDS[i]) == 0) {
-			return TRUE;
+int isNumber(char* s) {
+	for (int i = 0; i < strlen(s); i++) {
+		if (!isdigit(s[i])) {
+			return FALSE;
 		}
 	}
-	return FALSE;
+	return TRUE;
 }
 
 /*
@@ -106,7 +107,12 @@ void bg(char* command, char* args[]) {
 	sends the TERM signal to a process pid to terminate it
 */
 void bgkill(pid_t pid) {
-	// SIGTERM
+	int error = kill(pid, SIGTERM);
+	if (!error) {
+		sleep(1);
+	} else {
+		printf("bgkill error\n");
+	}
 }
 
 /*
@@ -114,7 +120,12 @@ void bgkill(pid_t pid) {
 	sends the STOP signal to a process pid to temporarily stop it
 */
 void bgstop(pid_t pid) {
-	// SIGSTOP
+	int error = kill(pid, SIGSTOP);
+	if (!error) {
+		sleep(1);
+	} else {
+		printf("bgstop error\n");
+	}
 }
 
 /*
@@ -122,7 +133,12 @@ void bgstop(pid_t pid) {
 	sends the CONT signal to a stopped process pid to restart it
 */
 void bgstart(pid_t pid) {
-	// SIGCONT
+	int error = kill(pid, SIGCONT);
+	if (!error) {
+		sleep(1);
+	} else {
+		printf("bgstart error\n");
+	}
 }
 
 /*
@@ -141,13 +157,13 @@ void bglist() {
 */
 void pstat(pid_t pid) {
 	if (isValidProcess(pid)) {
-		char* comm = (char *)malloc(sizeof(char));
-		char* state = (char *)malloc(sizeof(char));
-		char* utime = (char *)malloc(sizeof(char));
-		char* stime = (char *)malloc(sizeof(char));
-		char* rss = (char *)malloc(sizeof(char));
-		char* voluntary_ctxt_switches = (char *)malloc(sizeof(char));
-		char* nonvoluntary_ctxt_switches = (char *)malloc(sizeof(char));
+		char* comm = NULL;
+		char* state = NULL;
+		char* utime = NULL;
+		char* stime = NULL;
+		char* rss = NULL;
+		char* voluntary_ctxt_switches = NULL;
+		char* nonvoluntary_ctxt_switches = NULL;
 
 		printf("comm: %s\n", comm);
 		printf("state: %s\n", state);
@@ -189,21 +205,41 @@ void executeUserInput(char** userInput) {
 	int commandInt = commandToInt(userInput[0]);
 
 	switch (commandInt) {
-		case 0:
+		case 0: {
 			// char* process = "cat";
 			// char* arguments[] = {"foo.txt"};
 			// bg(process, arguments);
 			break;
-		case 1:
-			// pid_t pid = atoi(userInput[1]);
-			// bgkill(pid);
+		}
+		case 1: {
+			if (userInput[1] == NULL || !isNumber(userInput[1])) {
+				printf("usage: bgkill <pid>\n");
+				return;
+			}
+			pid_t pid = atoi(userInput[1]);
+			if (pid != 0) {
+				bgkill(pid);
+			}
 			break;
-		case 2:
-			// bgstop(pid);
+		}
+		case 2: {
+			if (userInput[1] == NULL || !isNumber(userInput[1])) {
+				printf("usage: bgstop <pid>\n");
+				return;
+			}
+			pid_t pid = atoi(userInput[1]);
+			bgstop(pid);
 			break;
-		case 3:
-			// bgstart(pid);
+		}
+		case 3: {
+			if (userInput[1] == NULL || !isNumber(userInput[1])) {
+				printf("usage: bgstart <pid>\n");
+				return;
+			}
+			pid_t pid = atoi(userInput[1]);
+			bgstart(pid);
 			break;
+		}
 		case 4:
 			bglist();
 			break;
