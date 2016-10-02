@@ -20,7 +20,7 @@
 
 typedef struct node_t {
 	pid_t pid;
-	char* status;
+	int isRunning;
 	char* process;
 	struct node_t* next;
 } node_t;
@@ -92,11 +92,11 @@ int commandToInt(char* command) {
 	pid: a process id (e.g. 123)
 	adds a node with a given pid to the list of processes
 */
-void addProcessToList(pid_t pid, char* status, char* process) {
+void addProcessToList(pid_t pid, int isRunning, char* process) {
 	node_t* n = (node_t*)malloc(sizeof(node_t));
 	n->pid = pid;
 	n->process = process;
-	n->status = status;
+	n->isRunning = isRunning;
 	n->next = NULL;
 
 	if (processListHead == NULL) {
@@ -140,7 +140,7 @@ void removeProcessFromList(pid_t pid) {
 	pid: a process id (e.g. 123)
 	returns a node with a given pid to the list of processes
 */
-node_t* getNode(pid_t pid) {
+node_t* getNodeFromList(pid_t pid) {
 	node_t* iterator = processListHead;
 	while (iterator != NULL) {
 		if (iterator->pid == pid) {
@@ -166,7 +166,7 @@ void bg(char** userInput) {
 		exit(1);
 	} else if (pid > 0) {		// parent
 		printf("Started background process %d\n", pid);
-		addProcessToList(pid, "running", userInput[1]);
+		addProcessToList(pid, TRUE, userInput[1]);
 		sleep(1);
 	} else {
 		printf("Error: failed to fork\n");
@@ -222,7 +222,11 @@ void bglist() {
 
 	while (iterator != NULL) {
 		count++;
-		printf("%d:\t %s\n", iterator->pid, iterator->process);
+		char* stopped = "";
+		if (!iterator->isRunning) {
+			stopped = "(stopped)";
+		}
+		printf("%d:\t %s %s\n", iterator->pid, iterator->process, stopped);
 		iterator = iterator->next;
 	}
 	printf("Total background jobs:\t%d\n", count);
@@ -282,16 +286,17 @@ void executeUserInput(char** userInput) {
 	int commandInt = commandToInt(userInput[0]);
 
 	switch (commandInt) {
-		case 0:
+		case 0: {
 			if (userInput[1] == NULL) {
 				printf("Error: invalid command to background\n");
 				return;
 			}
 			bg(userInput);
 			break;
+		}
 		case 1: {
 			if (userInput[1] == NULL || !isNumber(userInput[1])) {
-				printf("Error: invalid pid>\n");
+				printf("Error: invalid pid\n");
 				return;
 			}
 			pid_t pid = atoi(userInput[1]);
@@ -302,7 +307,7 @@ void executeUserInput(char** userInput) {
 		}
 		case 2: {
 			if (userInput[1] == NULL || !isNumber(userInput[1])) {
-				printf("Error: invalid pid>\n");
+				printf("Error: invalid pid\n");
 				return;
 			}
 			pid_t pid = atoi(userInput[1]);
@@ -336,12 +341,39 @@ void executeUserInput(char** userInput) {
 	}
 }
 
+void updateProcessStatuses() {
+	pid_t pid;
+	int	status;
+	while (TRUE) {
+		pid = waitpid(-1, &status, WCONTINUED | WNOHANG | WUNTRACED);
+		if (pid > 0) {
+			if (WIFSIGNALED(status)) {
+				printf("Background process %d terminated.\n", pid);
+				removeProcessFromList(pid);
+			}
+			if (WIFSTOPPED(status)) {
+				printf("Background process %d stopped.\n", pid);
+				node_t* n = getNodeFromList(pid);
+				n->isRunning = FALSE;
+			}
+			if (WIFCONTINUED(status)) {
+				printf("Background process %d started.\n", pid);
+				node_t* n = getNodeFromList(pid);
+				n->isRunning = TRUE;
+			}
+		} else {
+			break;
+		}
+	}
+}
+
 /* ---------- Main ---------- */
 
 int main() {
 	while (TRUE) {
 		char* userInput[MAX_INPUT_SIZE];
 		int success = getUserInput(userInput);
+		updateProcessStatuses();
 		if (success) {
 			executeUserInput(userInput);
 		}

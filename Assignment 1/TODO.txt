@@ -1,7 +1,5 @@
 TODO
 
-implement killed process notification
-
 implement pstat: write contents of \proc to a file, then parse it for required information.
 - comm
 - state
