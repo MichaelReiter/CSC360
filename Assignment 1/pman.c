@@ -9,20 +9,29 @@
 #include <unistd.h>            // fork(), execvp()
 #include <string.h>            // strcmp()
 #include <ctype.h>             // isdigit()
-#include <stdio.h>             // printf(), scanf(), setbuf(), perror()
+#include <stdio.h>             // printf()
 #include <stdlib.h>            // malloc()
 #include <sys/types.h>         // pid_t
 #include <sys/wait.h>          // waitpid()
-#include <signal.h>            // kill(), SIGTERM, SIGKILL, SIGSTOP, SIGCONT
+#include <signal.h>            // kill(), SIGTERM, SIGSTOP, SIGCONT
 #include <readline/readline.h> // readline
-// #include <readline/history.h>
 
-/* ---------- Constants ---------- */
+/* ---------- Typedefs ---------- */
+
+typedef struct node_t {
+	pid_t pid;
+	char* status;
+	char* process;
+	struct node_t* next;
+} node_t;
+
+/* ---------- Constants and global variables ---------- */
 
 #define TRUE 1
 #define FALSE 0
 #define MAX_INPUT_SIZE 128
 #define COMMANDS_LENGTH 6
+
 char* VALID_COMMANDS[] = {
 	"bg",
 	"bgkill",
@@ -32,19 +41,7 @@ char* VALID_COMMANDS[] = {
 	"pstat"
 };
 
-/* ---------- Typedefs ---------- */
-
-typedef enum status_t {
-  running,
-  stopped
-} status_t;
-
-typedef struct node {
-	pid_t pid;
-	char* arg;
-	status_t status;
-	struct node* next;
-} node;
+node_t* processListHead = NULL;
 
 /* ---------- General Helper functions ---------- */
 
@@ -65,18 +62,16 @@ int isNumber(char* s) {
 	pid: a process id (e.g. 123)
 	returns TRUE if the pid is valid, FALSE otherwise
 */
-int isValidProcess(pid_t pid) {
-	return TRUE;
+int isExistingProcess(pid_t pid) {
+	node_t* iterator = processListHead;
+	while (iterator != NULL) {
+		if (iterator->pid == pid) {
+			return TRUE;
+		}
+		iterator = iterator->next;
+	}
+	return FALSE;
 }
-
-/*
-	rawCommand: raw user input from the command line
-	returns an array containing the parsed command and its arguments
-*/
-// char** parseCommand(char* rawCommand) {
-// 	char* result[2];
-// 	return result;
-// }
 
 /*
 	command: a command (e.g. "bg", "bgkill", etc.)
@@ -91,15 +86,88 @@ int commandToInt(char* command) {
 	return -1;
 }
 
+/* ---------- Linked List functions ---------- */
+
+/*
+	pid: a process id (e.g. 123)
+	adds a node with a given pid to the list of processes
+*/
+void addProcessToList(pid_t pid, char* status, char* process) {
+	node_t* n = (node_t*)malloc(sizeof(node_t));
+	n->pid = pid;
+	n->process = process;
+	n->status = status;
+	n->next = NULL;
+
+	if (processListHead == NULL) {
+		processListHead = n;
+	} else {
+		node_t* iterator = processListHead;
+		while (iterator->next != NULL) {
+			iterator = iterator->next;
+		}
+		iterator->next = n;
+	}
+}
+
+/*
+	pid: a process id (e.g. 123)
+	removes a node with a given pid from the list of processes
+*/
+void removeProcessFromList(pid_t pid) {
+	if (!isExistingProcess(pid)) {
+		return;
+	}
+	node_t* iterator = processListHead;
+	if (processListHead->pid == pid) {
+		processListHead = processListHead->next;
+		free(iterator);
+	}
+	while (iterator->next != NULL) {
+		if (iterator->next->pid == pid) {
+			node_t* nodeToRemove = iterator->next;
+			iterator->next = iterator->next->next;
+			free(nodeToRemove);
+		}
+		iterator = iterator->next;
+	}
+}
+
+/*
+	pid: a process id (e.g. 123)
+	returns a node with a given pid to the list of processes
+*/
+node_t* getNode(pid_t pid) {
+	node_t* iterator = processListHead;
+	while (iterator != NULL) {
+		if (iterator->pid == pid) {
+			return iterator;
+		}
+		iterator = iterator->next;
+	}
+	return NULL;
+}
+
 /* ---------- Commands ---------- */
 
 /*
-	command: a command to be executed in the background
-	args: an array of arguments for command
-	returns a pid for the executed command
+	userInput: a pointer to an array of tokenized user input strings
+	creates a new child process and executes userInput[1] command
 */
-void bg(char* command, char* args[]) {
-	// use fork() and execvp()
+void bg(char** userInput) {
+	pid_t pid = fork();
+	if (pid == 0) {    // child
+		char* command = userInput[1];
+		execvp(command, &userInput[1]);
+		printf("Error: failed to execute command %s\n", command);
+		exit(1);
+	} else if (pid > 0) {		// parent
+		printf("Started background process %d\n", pid);
+		addProcessToList(pid, "running", userInput[1]);
+		sleep(1);
+	} else {
+		printf("Error: failed to fork\n");
+	}
 }
 
 /*
@@ -107,11 +175,12 @@ void bg(char* command, char* args[]) {
 	sends the TERM signal to a process pid to terminate it
 */
 void bgkill(pid_t pid) {
+	removeProcessFromList(pid);
 	int error = kill(pid, SIGTERM);
 	if (!error) {
 		sleep(1);
 	} else {
-		printf("bgkill error\n");
+		printf("Error: failed to execute bgkill\n");
 	}
 }
 
@@ -124,7 +193,7 @@ void bgstop(pid_t pid) {
 	if (!error) {
 		sleep(1);
 	} else {
-		printf("bgstop error\n");
+		printf("Error: failed to execute bgstop\n");
 	}
 }
 
@@ -137,7 +206,7 @@ void bgstart(pid_t pid) {
 	if (!error) {
 		sleep(1);
 	} else {
-		printf("bgstart error\n");
+		printf("Error: failed to execute bgstart\n");
 	}
 }
 
@@ -145,10 +214,15 @@ void bgstart(pid_t pid) {
 	displays a list of all programs currently executing in the background
 */
 void bglist() {
-	int processCount = 0;
-	// for each process:
-	// 	printf("%d:\t %s\n", process->pid, process->path);
-	printf("Total background jobs:\t%d\n", processCount);
+	int count = 0;
+	node_t* iterator = processListHead;
+
+	while (iterator != NULL) {
+		count++;
+		printf("%d:\t %s\n", iterator->pid, iterator->process);
+		iterator = iterator->next;
+	}
+	printf("Total background jobs:\t%d\n", count);
 }
 
 /*
@@ -156,7 +230,7 @@ void bglist() {
 	lists information relevant to a process pid
 */
 void pstat(pid_t pid) {
-	if (isValidProcess(pid)) {
+	if (isExistingProcess(pid)) {
 		char* comm = NULL;
 		char* state = NULL;
 		char* utime = NULL;
@@ -205,15 +279,12 @@ void executeUserInput(char** userInput) {
 	int commandInt = commandToInt(userInput[0]);
 
 	switch (commandInt) {
-		case 0: {
-			// char* process = "cat";
-			// char* arguments[] = {"foo.txt"};
-			// bg(process, arguments);
+		case 0:
+			bg(userInput);
 			break;
-		}
 		case 1: {
 			if (userInput[1] == NULL || !isNumber(userInput[1])) {
-				printf("usage: bgkill <pid>\n");
+				printf("Error: invalid pid>\n");
 				return;
 			}
 			pid_t pid = atoi(userInput[1]);
@@ -224,7 +295,7 @@ void executeUserInput(char** userInput) {
 		}
 		case 2: {
 			if (userInput[1] == NULL || !isNumber(userInput[1])) {
-				printf("usage: bgstop <pid>\n");
+				printf("Error: invalid pid>\n");
 				return;
 			}
 			pid_t pid = atoi(userInput[1]);
@@ -233,7 +304,7 @@ void executeUserInput(char** userInput) {
 		}
 		case 3: {
 			if (userInput[1] == NULL || !isNumber(userInput[1])) {
-				printf("usage: bgstart <pid>\n");
+				printf("Error: invalid pid\n");
 				return;
 			}
 			pid_t pid = atoi(userInput[1]);
@@ -243,9 +314,15 @@ void executeUserInput(char** userInput) {
 		case 4:
 			bglist();
 			break;
-		case 5:
-			// pstat(pid);
+		case 5: {
+			if (userInput[1] == NULL || !isNumber(userInput[1])) {
+				printf("Error: invalid pid\n");
+				return;
+			}
+			pid_t pid = atoi(userInput[1]);
+			pstat(pid);
 			break;
+		}
 		default:
 			printf("PMan: > %s:\tcommand not found\n", userInput[0]);
 			break;
