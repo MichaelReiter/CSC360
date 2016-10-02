@@ -118,18 +118,21 @@ void removeProcessFromList(pid_t pid) {
 	if (!isExistingProcess(pid)) {
 		return;
 	}
-	node_t* iterator = processListHead;
-	if (processListHead->pid == pid) {
-		processListHead = processListHead->next;
-		free(iterator);
-	}
-	while (iterator->next != NULL) {
-		if (iterator->next->pid == pid) {
-			node_t* nodeToRemove = iterator->next;
-			iterator->next = iterator->next->next;
-			free(nodeToRemove);
+	node_t* iterator1 = processListHead;
+	node_t* iterator2 = NULL;
+
+	while (iterator1 != NULL) {
+		if (iterator1->pid == pid) {
+			if (iterator1 == processListHead) {
+				processListHead = processListHead->next;
+			} else {
+				iterator2->next = iterator1->next;
+			}
+			free(iterator1);
+			return;
 		}
-		iterator = iterator->next;
+		iterator2 = iterator1;
+		iterator1 = iterator1->next;
 	}
 }
 
