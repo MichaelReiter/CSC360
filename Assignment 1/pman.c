@@ -280,6 +280,10 @@ void executeUserInput(char** userInput) {
 
 	switch (commandInt) {
 		case 0:
+			if (userInput[1] == NULL) {
+				printf("Error: invalid command to background\n");
+				return;
+			}
 			bg(userInput);
 			break;
 		case 1: {
