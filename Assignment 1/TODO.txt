@@ -1,14 +1,10 @@
 TODO
 
-bg
+fix bg bug with no args
 
-bgkill pid
+test bgstop and bgstart
 
-bgstop pid
-
-bgstart pid
-
-pstat pid: write contents of \proc to a file, then parse it for required information
+implement pstat: write contents of \proc to a file, then parse it for required information
 
 - comm
 - state
@@ -19,4 +15,4 @@ pstat pid: write contents of \proc to a file, then parse it for required informa
 - nonvoluntary_ctxt_switches
 - 'Error: Process pid does not exist.'
 
-command not found
+implement killed process notification
