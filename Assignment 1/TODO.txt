@@ -1,7 +1,5 @@
 TODO
 
-fix bg bug with no args
-
 test bgstop and bgstart
 
 implement pstat: write contents of \proc to a file, then parse it for required information
