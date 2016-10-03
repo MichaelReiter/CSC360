@@ -13,4 +13,5 @@ int main(int argc, char* argv[]) {
 			sleep(interval);
 		}
 	}
+	return 0;
 }

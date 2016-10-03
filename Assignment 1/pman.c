@@ -50,7 +50,8 @@ node_t* processListHead = NULL;
 	returns TRUE if the string is a valid integer, FALSE otherwise
 */
 int isNumber(char* s) {
-	for (int i = 0; i < strlen(s); i++) {
+	int i;
+	for (i = 0; i < strlen(s); i++) {
 		if (!isdigit(s[i])) {
 			return FALSE;
 		}
@@ -78,12 +79,36 @@ int isExistingProcess(pid_t pid) {
 	returns an integer mapping to that command or -1 if the command is invalid
 */
 int commandToInt(char* command) {
-	for (int i = 0; i < COMMANDS_LENGTH; i++) {
+	int i;
+	for (i = 0; i < COMMANDS_LENGTH; i++) {
 		if (strcmp(command, VALID_COMMANDS[i]) == 0) {
 			return i;
 		}
 	}
 	return -1;
+}
+
+/*
+	filePath: the path the stat file (e.g. '/proc/123/stat')
+	fileContents: an array of strings to which to write the read file contents
+*/
+void readStat(char* filePath, char** fileContents) {
+	FILE *fp = fopen(filePath, "r");
+	char filestream[1024];
+	if (fp != NULL) {
+		int i = 0;
+		while (fgets(filestream, sizeof(filestream)-1, fp) != NULL) {
+			char* token;
+			token = strtok(filestream, " ");
+			fileContents[i] = token;
+			while (token != NULL) {
+				fileContents[i] = token;
+				token = strtok(NULL, " ");
+				i++;
+			}
+		}
+	}
+	fclose(fp);
 }
 
 /* ---------- Linked List functions ---------- */
@@ -92,11 +117,11 @@ int commandToInt(char* command) {
 	pid: a process id (e.g. 123)
 	adds a node with a given pid to the list of processes
 */
-void addProcessToList(pid_t pid, int isRunning, char* process) {
+void addProcessToList(pid_t pid, char* process) {
 	node_t* n = (node_t*)malloc(sizeof(node_t));
 	n->pid = pid;
 	n->process = process;
-	n->isRunning = isRunning;
+	n->isRunning = TRUE;
 	n->next = NULL;
 
 	if (processListHead == NULL) {
@@ -166,7 +191,7 @@ void bg(char** userInput) {
 		exit(1);
 	} else if (pid > 0) {		// parent
 		printf("Started background process %d\n", pid);
-		addProcessToList(pid, TRUE, userInput[1]);
+		addProcessToList(pid, userInput[1]);
 		sleep(1);
 	} else {
 		printf("Error: failed to fork\n");
@@ -238,21 +263,35 @@ void bglist() {
 */
 void pstat(pid_t pid) {
 	if (isExistingProcess(pid)) {
-		char* comm = NULL;
-		char* state = NULL;
-		char* utime = NULL;
-		char* stime = NULL;
-		char* rss = NULL;
-		char* voluntary_ctxt_switches = NULL;
-		char* nonvoluntary_ctxt_switches = NULL;
+		char statPath[MAX_INPUT_SIZE];
+		char statusPath[MAX_INPUT_SIZE];
+		sprintf(statPath, "/proc/%d/stat", pid);
+		sprintf(statusPath, "/proc/%d/status", pid);
 
-		printf("comm: %s\n", comm);
-		printf("state: %s\n", state);
-		printf("utime: %s\n", utime);
-		printf("stime: %s\n", stime);
-		printf("rss: %s\n", rss);
-		printf("voluntary_ctxt_switches: %s\n", voluntary_ctxt_switches);
-		printf("nonvoluntary_ctxt_switches: %s\n", nonvoluntary_ctxt_switches);
+		char* statContents[MAX_INPUT_SIZE];
+		readStat(statPath, statContents);
+
+		char statusContents[MAX_INPUT_SIZE][MAX_INPUT_SIZE];
+		FILE* statusFile = fopen(statusPath, "r");
+		int i = 0;
+		while (fgets(statusContents[i], MAX_INPUT_SIZE, statusFile) != NULL) {
+			i++;
+		}
+		fclose(statusFile);
+
+		char* p;
+		long unsigned int utime = strtoul(statContents[13], &p, 10) / sysconf(_SC_CLK_TCK);
+		long unsigned int stime = strtoul(statContents[14], &p, 10) / sysconf(_SC_CLK_TCK);
+		char* voluntary_ctxt_switches = statusContents[39];
+		char* nonvoluntary_ctxt_switches = statusContents[40];
+
+		printf("comm:\t%s\n", statContents[1]);
+		printf("state:\t%s\n", statContents[2]);
+		printf("utime:\t%lu\n", utime);
+		printf("stime:\t%lu\n", stime);
+		printf("rss:\t%s\n", statContents[24]);
+		printf("%s", voluntary_ctxt_switches);
+		printf("%s", nonvoluntary_ctxt_switches);
 	} else {
 		printf("Error: Process %d does not exist.\n", pid);
 	}
@@ -271,7 +310,8 @@ int getUserInput(char** userInput) {
 		return FALSE;
 	}
 	char* token = strtok(rawInput, " ");
-	for (int i = 0; i < MAX_INPUT_SIZE; i++) {
+	int i;
+	for (i = 0; i < MAX_INPUT_SIZE; i++) {
 		userInput[i] = token;
 		token = strtok(NULL, " ");
 	}
@@ -341,16 +381,15 @@ void executeUserInput(char** userInput) {
 	}
 }
 
+/*
+	updates process list running statuses
+*/
 void updateProcessStatuses() {
 	pid_t pid;
 	int	status;
 	while (TRUE) {
 		pid = waitpid(-1, &status, WCONTINUED | WNOHANG | WUNTRACED);
 		if (pid > 0) {
-			if (WIFSIGNALED(status)) {
-				printf("Background process %d terminated.\n", pid);
-				removeProcessFromList(pid);
-			}
 			if (WIFSTOPPED(status)) {
 				printf("Background process %d stopped.\n", pid);
 				node_t* n = getNodeFromList(pid);
@@ -361,6 +400,10 @@ void updateProcessStatuses() {
 				node_t* n = getNodeFromList(pid);
 				n->isRunning = TRUE;
 			}
+			if (WIFSIGNALED(status)) {
+				printf("Background process %d terminated.\n", pid);
+				removeProcessFromList(pid);
+			}
 		} else {
 			break;
 		}
@@ -369,6 +412,9 @@ void updateProcessStatuses() {
 
 /* ---------- Main ---------- */
 
+/*
+	An interactive prompt that can run processes in the background on Unix
+*/
 int main() {
 	while (TRUE) {
 		char* userInput[MAX_INPUT_SIZE];

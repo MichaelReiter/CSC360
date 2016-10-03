@@ -8,4 +8,3 @@ implement pstat: write contents of \proc to a file, then parse it for required i
 - rss
 - voluntary_ctxt_switches
 - nonvoluntary_ctxt_switches
-- 'Error: Process pid does not exist.'
