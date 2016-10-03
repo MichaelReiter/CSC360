@@ -107,8 +107,10 @@ void readStat(char* filePath, char** fileContents) {
 				i++;
 			}
 		}
+		fclose(fp);
+	} else {
+		printf("Error: could not read stat file\n");
 	}
-	fclose(fp);
 }
 
 /* ---------- Linked List functions ---------- */
@@ -284,11 +286,16 @@ void pstat(pid_t pid) {
 
 		char statusContents[MAX_INPUT_SIZE][MAX_INPUT_SIZE];
 		FILE* statusFile = fopen(statusPath, "r");
-		int i = 0;
-		while (fgets(statusContents[i], MAX_INPUT_SIZE, statusFile) != NULL) {
-			i++;
+		if (statusFile != NULL) {
+			int i = 0;
+			while (fgets(statusContents[i], MAX_INPUT_SIZE, statusFile) != NULL) {
+				i++;
+			}
+			fclose(statusFile);
+		} else {
+			printf("Error: could not read status file\n");
+			return;
 		}
-		fclose(statusFile);
 
 		char* p;
 		long unsigned int utime = strtoul(statContents[13], &p, 10) / sysconf(_SC_CLK_TCK);
