@@ -391,17 +391,17 @@ void updateProcessStatuses() {
 		pid = waitpid(-1, &status, WCONTINUED | WNOHANG | WUNTRACED);
 		if (pid > 0) {
 			if (WIFSTOPPED(status)) {
-				printf("Background process %d stopped.\n", pid);
+				printf("Background process %d was stopped.\n", pid);
 				node_t* n = getNodeFromList(pid);
 				n->isRunning = FALSE;
 			}
 			if (WIFCONTINUED(status)) {
-				printf("Background process %d started.\n", pid);
+				printf("Background process %d was started.\n", pid);
 				node_t* n = getNodeFromList(pid);
 				n->isRunning = TRUE;
 			}
 			if (WIFSIGNALED(status)) {
-				printf("Background process %d terminated.\n", pid);
+				printf("Background process %d was killed.\n", pid);
 				removeProcessFromList(pid);
 			}
 			if (WIFEXITED(status)) {
