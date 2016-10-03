@@ -404,6 +404,10 @@ void updateProcessStatuses() {
 				printf("Background process %d terminated.\n", pid);
 				removeProcessFromList(pid);
 			}
+			if (WIFEXITED(status)) {
+				printf("Background process %d terminated.\n", pid);
+				removeProcessFromList(pid);
+			}
 		} else {
 			break;
 		}
@@ -423,6 +427,7 @@ int main() {
 		if (success) {
 			executeUserInput(userInput);
 		}
+		updateProcessStatuses();
 	}
 
 	return 0;
