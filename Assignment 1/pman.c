@@ -203,7 +203,10 @@ void bg(char** userInput) {
 	sends the TERM signal to a process pid to terminate it
 */
 void bgkill(pid_t pid) {
-	removeProcessFromList(pid);
+	if (!isExistingProcess(pid)) {
+		printf("Error: invalid pid\n");
+		return;
+	}
 	int error = kill(pid, SIGTERM);
 	if (!error) {
 		sleep(1);
@@ -217,6 +220,10 @@ void bgkill(pid_t pid) {
 	sends the STOP signal to a process pid to temporarily stop it
 */
 void bgstop(pid_t pid) {
+	if (!isExistingProcess(pid)) {
+		printf("Error: invalid pid\n");
+		return;
+	}
 	int error = kill(pid, SIGSTOP);
 	if (!error) {
 		sleep(1);
@@ -230,6 +237,10 @@ void bgstop(pid_t pid) {
 	sends the CONT signal to a stopped process pid to restart it
 */
 void bgstart(pid_t pid) {
+	if (!isExistingProcess(pid)) {
+		printf("Error: invalid pid\n");
+		return;
+	}
 	int error = kill(pid, SIGCONT);
 	if (!error) {
 		sleep(1);
