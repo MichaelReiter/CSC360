@@ -2,7 +2,7 @@
 all: pman
 
 pman: pman.c
-	clear && gcc -Wall pman.c -lreadline -o PMan && ./PMan
+	gcc -Wall pman.c -lreadline -o PMan
 
 .PHONY clean:
 clean:
