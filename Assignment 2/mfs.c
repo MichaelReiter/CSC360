@@ -20,21 +20,21 @@
 /* ---------- Typedefs ---------- */
 
 typedef struct flow {
+  int id;
   float arrivalTime;
   float transmissionTime;
   int priority;
-  int id;
 } flow;
 
 /* ---------- Constants and global variables ---------- */
 
-#define MAXFLOW 5
-#define MAX_INPUT_SIZE 128
+#define MAXFLOW 16
+#define MAX_INPUT_SIZE 1024
 flow flows[MAXFLOW];        // parse input in an array of flow
 flow* queues[MAXFLOW];      // stores waiting flows while transmission pipe is occupied
 pthread_t threads[MAXFLOW]; // each thread executes one flow
-pthread_mutex_t trans_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t trans_convar = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t mutex;
+pthread_cond_t convar;
 
 /* ---------- Helper functions ---------- */
 
@@ -43,7 +43,7 @@ pthread_cond_t trans_convar = PTHREAD_COND_INITIALIZER;
   fileContents: an array of strings to which to write the read file contents
   reads the file at filePath into the string array fileContents
 */
-void readFlows(char* filePath, char fileContents[MAX_INPUT_SIZE][MAX_INPUT_SIZE]) {
+void readFlowsFile(char* filePath, char fileContents[MAX_INPUT_SIZE][MAX_INPUT_SIZE]) {
   FILE *fp = fopen(filePath, "r");
   if (fp != NULL) {
     int i = 0;
@@ -93,29 +93,35 @@ void releasePipe() {
 }
 
 /*
-  flowItem: 
-  Entry point for each thread created. Handles flow scheduling
+  flowItem: a flow struct to schedule
+  Entry point for each thread created. Handles flow scheduling.
 */
-// void* threadFunction(void* flowItem) {
-//   flow* item = (flow*)flowItem;
+void* threadFunction(void* flowItem) {
+  flow* f = (flow*)flowItem;
 
-//   // wait for arrival
-//   usleep(...);
+  printf("%d\n", f->id);
+  printf("%f\n", f->arrivalTime);
+  printf("%f\n", f->transmissionTime);
+  printf("%d\n\n", f->priority);
 
-//   // printf(Arrive...);
-//   printf("Flow %2d arrives: arrival time (%.2f), transmission time (%.1f), priority (%2d). \n", flowNum, arrivalTime, transmissionDuration, priority);
+  // // wait for arrival
+  // usleep(...);
 
-//   requestPipe(item);
-//   // printf(Start...)
-//   printf("Flow %2d starts its transmission at time %.2f. \n", flowNum, transmissionStartTime);
+  // // printf(Arrive...);
+  // printf("Flow %2d arrives: arrival time (%.2f), transmission time (%.1f), priority (%2d). \n", flowNum, arrivalTime, transmissionDuration, priority);
 
-//   // sleep for transmission time
-//   usleep(...);
+  // requestPipe(item);
+  // // printf(Start...)
+  // printf("Flow %2d starts its transmission at time %.2f. \n", flowNum, transmissionStartTime);
 
-//   releasePipe(item);
-//   // printf(Finish..);
-//   printf("Flow %2d finishes its transmission at time %d. \n", flowNum, transmissionFinishTime);
-// }
+  // // sleep for transmission time
+  // usleep(...);
+
+  // releasePipe(item);
+  // // printf(Finish..);
+  // printf("Flow %2d finishes its transmission at time %d. \n", flowNum, transmissionFinishTime);
+  pthread_exit(NULL);
+}
 
 /*
   s: a string
@@ -141,8 +147,8 @@ void parseFlows(char fileContents[MAX_INPUT_SIZE][MAX_INPUT_SIZE], int numFlows)
   for (i = 1; i <= numFlows; i++) {
     replaceColon(fileContents[i]);
 
-    int flowVector[4];
     int j = 0;
+    int flowVector[4];
     char* token = strtok(fileContents[i], ",");
     while (token != NULL) {
       flowVector[j] = atoi(token);
@@ -163,7 +169,7 @@ void parseFlows(char fileContents[MAX_INPUT_SIZE][MAX_INPUT_SIZE], int numFlows)
 /* ---------- Main ---------- */
 
 /*
-  A multiflow scheduler
+  A router simulator that concurrently schedules the transmission of flows
 */
 int main(int argc, char* argv[]) {
   if (argc < 2) {
@@ -171,22 +177,37 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
+  // Parse flows text file into array of *flow
   char fileContents[MAX_INPUT_SIZE][MAX_INPUT_SIZE];
-  readFlows(argv[1], fileContents);
-
+  readFlowsFile(argv[1], fileContents);
   int numFlows = atoi(fileContents[0]);
   parseFlows(fileContents, numFlows);
 
-  // int i;
-  // for (i = 0; i < numFlows; i++) {
-  //   // create a thread for each flow
-  //   pthread_create(&threads[i], NULL, threadFunction, (void*)&flows[i]);
-  // }
+  // Initialize mutex and conditional variable
+  pthread_mutex_init(&mutex, NULL);
+  pthread_cond_init(&convar, NULL);
 
-  // // wait for all threads to terminate
-  // pthread_join(...);
+  // Create threads in a joinable state
+  pthread_attr_t attr;
+  pthread_attr_init(&attr);
+  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
-  // // destroy mutex & condition variable
+  // Create a thread for each flow
+  int i;
+  for (i = 0; i < numFlows; i++) {
+    pthread_create(&threads[i], &attr, threadFunction, (void*)&flows[i]);
+  }
+
+  // Wait for all threads to terminate
+  for (i = 0; i < numFlows; i++) {
+    pthread_join(threads[i], NULL);
+  }
+
+  // Destroy mutex and conditional variable
+  pthread_attr_destroy(&attr);
+  pthread_mutex_destroy(&mutex);
+  pthread_cond_destroy(&convar);
+  pthread_exit(NULL);
 
   return 0;
 }
