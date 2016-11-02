@@ -21,7 +21,7 @@
 
 typedef struct flow {
   float arrivalTime;
-  float transTime;
+  float transmissionTime;
   int priority;
   int id;
 } flow;
@@ -117,6 +117,49 @@ void releasePipe() {
 //   printf("Flow %2d finishes its transmission at time %d. \n", flowNum, transmissionFinishTime);
 // }
 
+/*
+  s: a string
+  Replaces any ':' in s with ','
+*/
+void replaceColon(char s[]) {
+  int i = 0;
+  while (s[i] != '\0') {
+    if (s[i] == ':') {
+      s[i] = ',';
+    }
+    i++;
+  }
+}
+
+/*
+  fileContents: an array of strings containing user input
+  numFlows: the number of flows
+  Parses input into flow objects
+*/
+void parseFlows(char fileContents[MAX_INPUT_SIZE][MAX_INPUT_SIZE], int numFlows) {
+  int i;
+  for (i = 1; i <= numFlows; i++) {
+    replaceColon(fileContents[i]);
+
+    int flowVector[4];
+    int j = 0;
+    char* token = strtok(fileContents[i], ",");
+    while (token != NULL) {
+      flowVector[j] = atoi(token);
+      token = strtok(NULL, ",");
+      j++;
+    }
+
+    flow* f = (flow*)malloc(sizeof(flow));
+    f->id = flowVector[0];
+    f->arrivalTime = flowVector[1];
+    f->transmissionTime = flowVector[2];
+    f->priority = flowVector[3];
+
+    flows[i-1] = *f; 
+  }
+}
+
 /* ---------- Main ---------- */
 
 /*
@@ -131,11 +174,10 @@ int main(int argc, char* argv[]) {
   char fileContents[MAX_INPUT_SIZE][MAX_INPUT_SIZE];
   readFlows(argv[1], fileContents);
 
-  int i;
-  for (i = 0; i < 11; i++) {
-    printf("%s", fileContents[i]);
-  }
+  int numFlows = atoi(fileContents[0]);
+  parseFlows(fileContents, numFlows);
 
+  // int i;
   // for (i = 0; i < numFlows; i++) {
   //   // create a thread for each flow
   //   pthread_create(&threads[i], NULL, threadFunction, (void*)&flows[i]);
