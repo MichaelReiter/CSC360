@@ -1,8 +1,8 @@
 .phony all:
-all: a2
+all: mfs
 
-a2: a2.c
-	gcc -Wall a2.c -o a2 && clear && ./a2
+mfs: mfs.c
+	gcc -Wall mfs.c -o MFS && clear && ./MFS
 
 .PHONY clean:
 clean:
