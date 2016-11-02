@@ -2,7 +2,7 @@
 all: mfs
 
 mfs: mfs.c
-	gcc -Wall mfs.c -o MFS && clear && ./MFS
+	clear && gcc -Wall mfs.c -o MFS && ./MFS flows.txt
 
 .PHONY clean:
 clean:
