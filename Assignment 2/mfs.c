@@ -167,6 +167,17 @@ void parseFlows(char fileContents[MAX_INPUT_SIZE][MAX_INPUT_SIZE], int numFlows)
   }
 }
 
+/*
+  numFlows: the number of flows
+  Frees memory allocated for flows
+*/
+void cleanupFlows(int numFlows) {
+  int i;
+  for (i = 0; i < numFlows; i++) {
+    free(&flows[i]);
+  }
+}
+
 /* ---------- Main ---------- */
 
 /*
@@ -211,7 +222,8 @@ int main(int argc, char* argv[]) {
     pthread_join(threads[i], NULL);
   }
 
-  // Destroy mutex and conditional variable
+  // Free memory, and destroy mutex and conditional variable
+  cleanupFlows(numFlows);
   pthread_attr_destroy(&attr);
   pthread_mutex_destroy(&mutex);
   pthread_cond_destroy(&convar);
