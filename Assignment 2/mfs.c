@@ -26,12 +26,12 @@ typedef struct flow {
 
 #define TRUE 1
 #define FALSE 0
-#define MAXFLOW 16
+#define MAXFLOW 256
 #define MAX_INPUT_SIZE 1024
 #define MICROSECONDS_CONVERSION_FACTOR 100000
-flow flows[MAXFLOW];        // parse input in an array of flow
-flow* queues[MAXFLOW];      // stores waiting flows while transmission pipe is occupied
-pthread_t threads[MAXFLOW]; // each thread executes one flow
+flow flows[MAXFLOW];        // The input is parsed into an array of flows
+flow* queue[MAXFLOW];       // Stores waiting flows while transmission pipe is occupied
+pthread_t threads[MAXFLOW]; // Each thread executes one flow
 pthread_mutex_t mutex;
 pthread_cond_t convar;
 struct timeval start;
@@ -41,8 +41,8 @@ struct timeval start;
 /*
   filePath: the path of the file to read
   fileContents: an array of strings to which to write the read file contents
-  reads the file at filePath into the string array fileContents
-  returns TRUE if successful, FALSE otherwise
+  Reads the file at filePath into the string array fileContents
+  Returns TRUE if successful, FALSE otherwise
 */
 int readFlowsFile(char* filePath, char fileContents[MAX_INPUT_SIZE][MAX_INPUT_SIZE]) {
   FILE *fp = fopen(filePath, "r");
@@ -60,8 +60,70 @@ int readFlowsFile(char* filePath, char fileContents[MAX_INPUT_SIZE][MAX_INPUT_SI
 }
 
 /*
+  f1: the first flow to compare
+  f2: the second flow to compare
+
+  The one with the highest priority start its transmission first.
+
+  If there is a tie at the highest priority, the one whose arrival time
+  is the earliest start its transmission first.
+
+  If there is still a tie, the one that has the smallest transmission
+  time starts its transmission first.
+
+  If there is still a tie, the one that appears first in the input file
+  starts its transmission first.
+
+  Returns 1 if f1 should come before f2
+         -1 if f2 should come before f1
+          0 if there was an error
+*/
+int compareFlows(flow* f1, flow* f2) {
+  if (f1->priority < f2->priority) {
+    return 1;
+  } else if (f2->priority < f1->priority) {
+    return -1;
+  } else if (f1->arrivalTime < f2->arrivalTime) {
+    return 1;
+  } else if (f2->arrivalTime < f1->arrivalTime) {
+    return -1;
+  } else if (f1->transmissionTime < f2->transmissionTime) {
+    return 1;
+  } else if (f2->transmissionTime < f1->transmissionTime) {
+    return -1;
+  } else if (f1->id < f2->id) {
+    return 1;
+  } else if (f2->id < f1->id) {
+    return -1;
+  } else {
+    // Should never get here
+    return 0;
+  }
+}
+
+/*
+  queue: the queue to be sorted
+  n: the size of queue
+  Sorts queue in place using Bubblesort
+  (sometimes it's worth sacrificing running time to save programmer time)
+*/
+void sortQueue(flow** queue, int n) {
+  int i;
+  int j;
+  for (i = 0; i < n; i++) {
+    for (j = 0; j < n-1; j++) {
+      if (compareFlows(queue[j], queue[j+1]) == 1) {
+        flow* temp = queue[j+1];
+        queue[j+1] = queue[j];
+        queue[j] = temp;
+      }
+    }
+  }
+}
+
+/*
   f: a flow
-  Does something
+  Acquires the transmission pipe
 */
 void requestPipe(flow* f) {
   // Lock mutex
@@ -77,7 +139,8 @@ void requestPipe(flow* f) {
   // pthread_cond_signal(&convar);
   // pthread_cond_wait(&convar, &mutex);
 
-  // // Add f in queue, sort the queue according rules
+  // // Add f in queue then sort it
+  // sortQueue(queue, queueSize)
 
   // printf("Flow %2d waits for the finish of flow %2d. \n", f->id, f2->id);
   // // key point here..
@@ -93,9 +156,10 @@ void requestPipe(flow* f) {
 }
 
 /*
-  Does something
+  f: a flow
+  Releases the transmission pipe
 */
-void releasePipe() {
+void releasePipe(flow* f) {
   // use broadcast to ensure you get the right one
   // only about 5 lines
 }
@@ -126,7 +190,7 @@ void* threadFunction(void* flowItem) {
   int transmissionSleep = f->transmissionTime * MICROSECONDS_CONVERSION_FACTOR;
   usleep(transmissionSleep);
 
-  releasePipe();
+  releasePipe(f);
 
   gettimeofday(&now, NULL);
   printf("Flow %2d finishes its transmission at time %.1f. \n", f->id, f->transmissionTime * 0.1);
