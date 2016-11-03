@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <pthread.h>
 
 /*
@@ -28,6 +29,8 @@ typedef struct flow {
 
 /* ---------- Constants and global variables ---------- */
 
+#define TRUE 1
+#define FALSE 0
 #define MAXFLOW 16
 #define MAX_INPUT_SIZE 1024
 flow flows[MAXFLOW];        // parse input in an array of flow
@@ -42,8 +45,9 @@ pthread_cond_t convar;
   filePath: the path of the file to read
   fileContents: an array of strings to which to write the read file contents
   reads the file at filePath into the string array fileContents
+  returns TRUE if successful, FALSE otherwise
 */
-void readFlowsFile(char* filePath, char fileContents[MAX_INPUT_SIZE][MAX_INPUT_SIZE]) {
+int readFlowsFile(char* filePath, char fileContents[MAX_INPUT_SIZE][MAX_INPUT_SIZE]) {
   FILE *fp = fopen(filePath, "r");
   if (fp != NULL) {
     int i = 0;
@@ -51,17 +55,20 @@ void readFlowsFile(char* filePath, char fileContents[MAX_INPUT_SIZE][MAX_INPUT_S
       i++;
     }
     fclose(fp);
+    return TRUE;
   } else {
     printf("Error: could not read file\n");
+    return FALSE;
   }
 }
 
 /*
-  item: 
-  returns 
+  f: a flow
+  Does something
 */
-// void requestPipe(flow* item) {
-//   lock mutex;
+// void requestPipe(flow* f) {
+//   // Lock mutex
+//   pthread_mutex_lock(&mutex);
 
 //   if transmission pipe available && queue is empty {
 //     ...do some stuff..
@@ -69,19 +76,19 @@ void readFlowsFile(char* filePath, char fileContents[MAX_INPUT_SIZE][MAX_INPUT_S
 //     return ;
 //   }
 
-//   // add item in queue, sort the queue according rules
+//   // Add f in queue, sort the queue according rules
 
-//   // printf(Waiting...);
-//   printf("Flow %2d waits for the finish of flow %2d. \n");
+//   printf("Flow %2d waits for the finish of flow %2d. \n", f->id);
 //   // key point here..
 //   // wait till pipe to be available and be at the top of the queue
 //   while (some condition) {
 //     wait();
 //   }
 
-//   // update queue
+//   // Update queue
 
-//   // unlock mutex;
+//   // Unlock mutex
+//   pthread_mutex_unlock(&mutex);
 // }
 
 /*
@@ -99,27 +106,21 @@ void releasePipe() {
 void* threadFunction(void* flowItem) {
   flow* f = (flow*)flowItem;
 
-  printf("%d\n", f->id);
-  printf("%f\n", f->arrivalTime);
-  printf("%f\n", f->transmissionTime);
-  printf("%d\n\n", f->priority);
-
-  // // wait for arrival
-  // usleep(...);
-
-  // // printf(Arrive...);
-  // printf("Flow %2d arrives: arrival time (%.2f), transmission time (%.1f), priority (%2d). \n", flowNum, arrivalTime, transmissionDuration, priority);
+  // Wait for arrival (converted from deciseconds to microseconds)
+  int arrivalSleep = (int)f->arrivalTime * 100000;
+  usleep(arrivalSleep);
+  // printf("Flow %2d arrives: arrival time (%.2f), transmission time (%.1f), \
+    priority (%2d). \n", f->id, arrivalTime, f->transmissionTime, f->priority);
 
   // requestPipe(item);
-  // // printf(Start...)
-  // printf("Flow %2d starts its transmission at time %.2f. \n", flowNum, transmissionStartTime);
+  // printf("Flow %2d starts its transmission at time %.2f. \n", f->id, transmissionStartTime);
 
-  // // sleep for transmission time
-  // usleep(...);
+  // sleep for transmission time (converted from deciseconds to microseconds)
+  int transmissionSleep = (int)f->transmissionTime * 100000;
+  usleep(transmissionSleep);
 
   // releasePipe(item);
-  // // printf(Finish..);
-  // printf("Flow %2d finishes its transmission at time %d. \n", flowNum, transmissionFinishTime);
+  // printf("Flow %2d finishes its transmission at time %d. \n", f->id, transmissionFinishTime);
   pthread_exit(NULL);
 }
 
@@ -177,9 +178,16 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  // Parse flows text file into array of *flow
+  // Read flows text file
   char fileContents[MAX_INPUT_SIZE][MAX_INPUT_SIZE];
-  readFlowsFile(argv[1], fileContents);
+  int success = readFlowsFile(argv[1], fileContents);
+  
+  // Handle file I/O error
+  if (!success) {
+    return 1;
+  }
+
+  // Parse input into array of flow*
   int numFlows = atoi(fileContents[0]);
   parseFlows(fileContents, numFlows);
 
