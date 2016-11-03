@@ -11,12 +11,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
-
-/*
-  time calculation may be a nightware! 
-  Beware of float, int, unsigned int conversion.
-  you could use gettimeofday(...) to get down to microseconds!
-*/
+#include <sys/time.h>
 
 /* ---------- Typedefs ---------- */
 
@@ -33,11 +28,13 @@ typedef struct flow {
 #define FALSE 0
 #define MAXFLOW 16
 #define MAX_INPUT_SIZE 1024
+#define MICROSECONDS_CONVERSION_FACTOR 100000
 flow flows[MAXFLOW];        // parse input in an array of flow
 flow* queues[MAXFLOW];      // stores waiting flows while transmission pipe is occupied
 pthread_t threads[MAXFLOW]; // each thread executes one flow
 pthread_mutex_t mutex;
 pthread_cond_t convar;
+struct timeval start;
 
 /* ---------- Helper functions ---------- */
 
@@ -66,30 +63,30 @@ int readFlowsFile(char* filePath, char fileContents[MAX_INPUT_SIZE][MAX_INPUT_SI
   f: a flow
   Does something
 */
-// void requestPipe(flow* f) {
-//   // Lock mutex
-//   pthread_mutex_lock(&mutex);
+void requestPipe(flow* f) {
+  // // Lock mutex
+  // pthread_mutex_lock(&mutex);
 
-//   if transmission pipe available && queue is empty {
-//     ...do some stuff..
-//     unlock mutex;
-//     return ;
-//   }
+  // if transmission pipe available && queue is empty {
+  //   ...do some stuff..
+  //   unlock mutex;
+  //   return ;
+  // }
 
-//   // Add f in queue, sort the queue according rules
+  // // Add f in queue, sort the queue according rules
 
-//   printf("Flow %2d waits for the finish of flow %2d. \n", f->id);
-//   // key point here..
-//   // wait till pipe to be available and be at the top of the queue
-//   while (some condition) {
-//     wait();
-//   }
+  // printf("Flow %2d waits for the finish of flow %2d. \n", f->id, f2->id);
+  // // key point here..
+  // // wait till pipe to be available and be at the top of the queue
+  // while (some condition) {
+  //   wait();
+  // }
 
-//   // Update queue
+  // // Update queue
 
-//   // Unlock mutex
-//   pthread_mutex_unlock(&mutex);
-// }
+  // // Unlock mutex
+  // pthread_mutex_unlock(&mutex);
+}
 
 /*
   Does something
@@ -107,20 +104,28 @@ void* threadFunction(void* flowItem) {
   flow* f = (flow*)flowItem;
 
   // Wait for arrival (converted from deciseconds to microseconds)
-  int arrivalSleep = (int)f->arrivalTime * 100000;
+  int arrivalSleep = f->arrivalTime * MICROSECONDS_CONVERSION_FACTOR;
   usleep(arrivalSleep);
-  // printf("Flow %2d arrives: arrival time (%.2f), transmission time (%.1f), \
-    priority (%2d). \n", f->id, arrivalTime, f->transmissionTime, f->priority);
 
-  // requestPipe(item);
-  // printf("Flow %2d starts its transmission at time %.2f. \n", f->id, transmissionStartTime);
+  struct timeval now;
+  gettimeofday(&now, NULL);
+  float actualArrivalTime = (now.tv_sec - start.tv_sec) * 0.1;
+  printf("Flow %2d arrives: arrival time (%.2f), transmission time (%.1f), priority (%2d). \n", f->id, actualArrivalTime, f->transmissionTime * 0.1, f->priority);
 
-  // sleep for transmission time (converted from deciseconds to microseconds)
-  int transmissionSleep = (int)f->transmissionTime * 100000;
+  requestPipe(f);
+
+  gettimeofday(&now, NULL);
+  float actualTransmissionTime = (now.tv_sec - start.tv_sec) * 0.1;
+  printf("Flow %2d starts its transmission at time %.2f. \n", f->id, actualTransmissionTime);
+
+  // Sleep for transmission time (converted from deciseconds to microseconds)
+  int transmissionSleep = f->transmissionTime * MICROSECONDS_CONVERSION_FACTOR;
   usleep(transmissionSleep);
 
-  // releasePipe(item);
-  // printf("Flow %2d finishes its transmission at time %d. \n", f->id, transmissionFinishTime);
+  releasePipe();
+
+  gettimeofday(&now, NULL);
+  printf("Flow %2d finishes its transmission at time %.1f. \n", f->id, f->transmissionTime * 0.1);
   pthread_exit(NULL);
 }
 
@@ -211,10 +216,15 @@ int main(int argc, char* argv[]) {
   pthread_attr_init(&attr);
   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
+  gettimeofday(&start, NULL);
+
   // Create a thread for each flow
   int i;
   for (i = 0; i < numFlows; i++) {
-    pthread_create(&threads[i], &attr, threadFunction, (void*)&flows[i]);
+    if (pthread_create(&threads[i], &attr, threadFunction, (void*)&flows[i]) != 0){
+      printf("Error: failed to create pthread.\n");
+      return 1;
+    }
   }
 
   // Wait for all threads to terminate
@@ -223,7 +233,7 @@ int main(int argc, char* argv[]) {
   }
 
   // Free memory, and destroy mutex and conditional variable
-  cleanupFlows(numFlows);
+  // cleanupFlows(numFlows);
   pthread_attr_destroy(&attr);
   pthread_mutex_destroy(&mutex);
   pthread_cond_destroy(&convar);
