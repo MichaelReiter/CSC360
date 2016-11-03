@@ -64,14 +64,18 @@ int readFlowsFile(char* filePath, char fileContents[MAX_INPUT_SIZE][MAX_INPUT_SI
   Does something
 */
 void requestPipe(flow* f) {
-  // // Lock mutex
-  // pthread_mutex_lock(&mutex);
+  // Lock mutex
+  pthread_mutex_lock(&mutex);
 
   // if transmission pipe available && queue is empty {
   //   ...do some stuff..
   //   unlock mutex;
   //   return ;
   // }
+
+  // // At some point...
+  // pthread_cond_signal(&convar);
+  // pthread_cond_wait(&convar, &mutex);
 
   // // Add f in queue, sort the queue according rules
 
@@ -84,8 +88,8 @@ void requestPipe(flow* f) {
 
   // // Update queue
 
-  // // Unlock mutex
-  // pthread_mutex_unlock(&mutex);
+  // Unlock mutex
+  pthread_mutex_unlock(&mutex);
 }
 
 /*
@@ -162,13 +166,14 @@ void parseFlows(char fileContents[MAX_INPUT_SIZE][MAX_INPUT_SIZE], int numFlows)
       j++;
     }
 
-    flow* f = (flow*)malloc(sizeof(flow));
-    f->id = flowVector[0];
-    f->arrivalTime = flowVector[1];
-    f->transmissionTime = flowVector[2];
-    f->priority = flowVector[3];
+    flow f = {
+      flowVector[0],  // id
+      flowVector[1],  // arrivalTime
+      flowVector[2],  // transmissionTime
+      flowVector[3]   // priority
+    };
 
-    flows[i-1] = *f; 
+    flows[i-1] = f;
   }
 }
 
