@@ -28,16 +28,16 @@ typedef struct flow {
 #define FALSE 0
 #define MAXFLOW 256
 #define MAX_INPUT_SIZE 1024
-#define MICROSECONDS_CONVERSION_FACTOR 100000
+#define DECISECONDS_TO_MICROSECONDS 100000
 flow flows[MAXFLOW];        // The input is parsed into an array of flows
 flow* queue[MAXFLOW];       // Stores waiting flows while transmission pipe is occupied
 pthread_t threads[MAXFLOW]; // Each thread executes one flow
 pthread_mutex_t mutex;
 pthread_cond_t convar;
+flow* transmittingFlow;
 struct timeval start;
-int transmittingFlowId;
-int transmitting = FALSE;
 int queueLength = 0;
+int isTransmitting = FALSE;
 
 /* ---------- Helper functions ---------- */
 
@@ -112,13 +112,6 @@ int compareFlows(flow* f1, flow* f2) {
   }
 }
 
-void printQueue() {
-  int i;
-  for (i = 0; i < queueLength; i++) {
-    printf("%d\n", queue[i]->id);
-  }
-}
-
 /*
   Sorts queue in place using Bubblesort
   (sometimes it's worth sacrificing running time to save programmer time)
@@ -143,7 +136,7 @@ void sortQueue() {
 */
 void insertIntoQueue(flow* f) {
   queue[queueLength] = f;
-  queueLength++;
+  queueLength += 1;
 }
 
 /*
@@ -154,8 +147,7 @@ void removeFromQueue() {
   for (i = 0; i < queueLength-1; i++) {
     queue[i] = queue[i+1];
   }
-  queueLength--;
-  // queue[queueLength] = NULL;
+  queueLength -= 1;
 }
 
 /*
@@ -164,25 +156,20 @@ void removeFromQueue() {
 */
 void requestPipe(flow* f) {
   pthread_mutex_lock(&mutex);
-  if (transmitting == FALSE && queueLength == 0) {
-    transmittingFlowId = f->id;
-    transmitting = TRUE;
+
+  if (isTransmitting == FALSE && queueLength == 0) {
+    transmittingFlow = f;
+    isTransmitting = TRUE;
     insertIntoQueue(f);
-    // printQueue();
-    // sortQueue();
-  } else if (transmitting == FALSE && queueLength > 0) {
+  } else if (isTransmitting == FALSE && queueLength > 0) {
     insertIntoQueue(f);
-    // printQueue();
     sortQueue();
-    transmittingFlowId = queue[0]->id;
-    transmitting = TRUE;
+    transmittingFlow = queue[0];
+    isTransmitting = TRUE;
   } else {
     insertIntoQueue(f);
-    // printQueue();
     sortQueue();
   }
-  // printf("after sorting\n");
-  // printQueue();
 
   pthread_mutex_unlock(&mutex);
 }
@@ -197,25 +184,24 @@ void releasePipe(flow* f) {
   removeFromQueue();
 
   if (queueLength > 0) {
-    transmittingFlowId = queue[0]->id;
+    transmittingFlow = queue[0];
   } else {
-    transmittingFlowId = -1;
-    transmitting = FALSE;
+    transmittingFlow = NULL;
+    isTransmitting = FALSE;
   }
 
   pthread_mutex_unlock(&mutex);
 }
 
 /*
-  now: a timeval for now
   Returns the time difference in microseconds between now and start
 */
 float getTimeDiff() {
   struct timeval now;
   gettimeofday(&now, NULL);
-  long nowMicroseconds = (now.tv_sec * 10 * MICROSECONDS_CONVERSION_FACTOR) + now.tv_usec;
-  long startMicroseconds = (start.tv_sec * 10 * MICROSECONDS_CONVERSION_FACTOR) + start.tv_usec;
-  return (float)(nowMicroseconds - startMicroseconds) / (10 * MICROSECONDS_CONVERSION_FACTOR);
+  long nowMicroseconds = (now.tv_sec * 10 * DECISECONDS_TO_MICROSECONDS) + now.tv_usec;
+  long startMicroseconds = (start.tv_sec * 10 * DECISECONDS_TO_MICROSECONDS) + start.tv_usec;
+  return (float)(nowMicroseconds - startMicroseconds) / (10 * DECISECONDS_TO_MICROSECONDS);
 }
 
 /*
@@ -226,21 +212,21 @@ void* threadFunction(void* flowItem) {
   flow* f = (flow*)flowItem;
 
   // Wait for arrival (converted from deciseconds to microseconds)
-  usleep(f->arrivalTime * MICROSECONDS_CONVERSION_FACTOR);
+  usleep(f->arrivalTime * DECISECONDS_TO_MICROSECONDS);
 
   printf("Flow %2d arrives: arrival time (%.2f), transmission time (%.1f), priority (%2d). \n", f->id, getTimeDiff(), f->transmissionTime * 0.1, f->priority);
 
   requestPipe(f);
 
-  if (f->id != transmittingFlowId) {
-    printf("Flow %2d waits for the finish of flow %2d. \n", f->id, transmittingFlowId);
+  if (f->id != transmittingFlow->id) {
+    printf("Flow %2d waits for the finish of flow %2d. \n", f->id, transmittingFlow->id);
   }
-  while (transmittingFlowId != f->id);
+  while (transmittingFlow->id != f->id);
 
   printf("Flow %2d starts its transmission at time %.2f. \n", f->id, getTimeDiff());
 
   // Sleep for transmission time (converted from deciseconds to microseconds)
-  usleep(f->transmissionTime * MICROSECONDS_CONVERSION_FACTOR);
+  usleep(f->transmissionTime * DECISECONDS_TO_MICROSECONDS);
 
   printf("Flow %2d finishes its transmission at time %.1f. \n", f->id, getTimeDiff());
 
@@ -306,8 +292,6 @@ int main(int argc, char* argv[]) {
 
   // Read flows text file
   char fileContents[MAX_INPUT_SIZE][MAX_INPUT_SIZE];
-  
-  // Handle file I/O error
   if (readFlowsFile(argv[1], fileContents) != 0) {
     printf("Error: Failed to read flows file\n");
     return 1;
@@ -345,8 +329,7 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  // Free memory, and destroy mutex and conditional variable
-  // cleanupFlows(numFlows);
+  // Destroy mutex and conditional variable
   pthread_attr_destroy(&attr);
   pthread_mutex_destroy(&mutex);
   pthread_cond_destroy(&convar);
