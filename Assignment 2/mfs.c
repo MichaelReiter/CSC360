@@ -36,7 +36,7 @@ pthread_mutex_t mutex;
 pthread_cond_t convar;
 struct timeval start;
 int queueLength = 0;
-int isTransmitting = FALSE;
+int pipeInUse = FALSE;
 
 /* ---------- Helper functions ---------- */
 
@@ -119,7 +119,7 @@ void sortQueue() {
   int x;
   int y;
   int startingIndex;
-  if (isTransmitting) {
+  if (pipeInUse) {
     startingIndex = 1;
   } else {
     startingIndex = 0;
@@ -148,9 +148,10 @@ void insertIntoQueue(flow* f) {
   Removes the least recently inserted flow from the queue
 */
 void removeFromQueue() {
-  int i;
-  for (i = 0; i < queueLength-1; i++) {
-    queue[i] = queue[i+1];
+  int x = 0;
+  while (x < queueLength-1) {
+    queue[x] = queue[x+1];
+    x += 1;
   }
   queueLength -= 1;
 }
@@ -177,7 +178,7 @@ void requestPipe(flow* f) {
       exit(1);
     }
   }
-  isTransmitting = TRUE;
+  pipeInUse = TRUE;
 
   if (pthread_mutex_unlock(&mutex) != 0) {
     printf("Error: failed to unlock mutex\n");
@@ -201,7 +202,7 @@ void releasePipe(flow* f) {
   }
 
   removeFromQueue();
-  isTransmitting = FALSE;
+  pipeInUse = FALSE;
 
   if (pthread_mutex_unlock(&mutex) != 0) {
     printf("Error: failed to unlock mutex\n");
@@ -213,9 +214,9 @@ void releasePipe(flow* f) {
   Returns the time difference in microseconds between now and start
 */
 float getTimeDifference() {
-  struct timeval now;
-  gettimeofday(&now, NULL);
-  long nowMicroseconds = (now.tv_sec * 10 * DECISECONDS_TO_MICROSECONDS) + now.tv_usec;
+  struct timeval nowTime;
+  gettimeofday(&nowTime, NULL);
+  long nowMicroseconds = (nowTime.tv_sec * 10 * DECISECONDS_TO_MICROSECONDS) + nowTime.tv_usec;
   long startMicroseconds = (start.tv_sec * 10 * DECISECONDS_TO_MICROSECONDS) + start.tv_usec;
   return (float)(nowMicroseconds - startMicroseconds) / (10 * DECISECONDS_TO_MICROSECONDS);
 }
