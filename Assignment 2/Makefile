@@ -2,7 +2,7 @@
 all: mfs
 
 mfs: mfs.c
-	clear && gcc -Wall -pthread mfs.c -o MFS && ./MFS flows.txt
+	gcc -Wall -pthread mfs.c -o MFS
 
 .PHONY clean:
 clean:
