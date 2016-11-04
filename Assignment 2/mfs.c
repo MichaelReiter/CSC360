@@ -34,7 +34,6 @@ flow* queue[MAXFLOW];       // Stores waiting flows while transmission pipe is o
 pthread_t threads[MAXFLOW]; // Each thread executes one flow
 pthread_mutex_t mutex;
 pthread_cond_t convar;
-flow* transmittingFlow;
 struct timeval start;
 int queueLength = 0;
 int isTransmitting = FALSE;
@@ -117,14 +116,20 @@ int compareFlows(flow* f1, flow* f2) {
   (sometimes it's worth sacrificing running time to save programmer time)
 */
 void sortQueue() {
-  int i;
-  int j;
-  for (i = isTransmitting; i < queueLength; i++) {
-    for (j = isTransmitting; j < queueLength-1; j++) {
-      if (compareFlows(queue[j], queue[j+1]) == 1) {
-        flow* temp = queue[j+1];
-        queue[j+1] = queue[j];
-        queue[j] = temp;
+  int x;
+  int y;
+  int startingIndex;
+  if (isTransmitting) {
+    startingIndex = 1;
+  } else {
+    startingIndex = 0;
+  }
+  for (x = startingIndex; x < queueLength; x++) {
+    for (y = startingIndex; y < queueLength-1; y++) {
+      if (compareFlows(queue[y], queue[y+1]) == 1) {
+        flow* temp = queue[y+1];
+        queue[y+1] = queue[y];
+        queue[y] = temp;
       }
     }
   }
@@ -166,7 +171,6 @@ void requestPipe(flow* f) {
   while (queue[0]->id != f->id) {
     pthread_cond_wait(&convar, &mutex);
   }
-
   isTransmitting = TRUE;
 
   pthread_mutex_unlock(&mutex);
@@ -180,9 +184,7 @@ void releasePipe(flow* f) {
   pthread_mutex_lock(&mutex);
 
   pthread_cond_broadcast(&convar);
-  
   removeFromQueue();
-
   isTransmitting = FALSE;
 
   pthread_mutex_unlock(&mutex);
@@ -191,7 +193,7 @@ void releasePipe(flow* f) {
 /*
   Returns the time difference in microseconds between now and start
 */
-float getTimeDiff() {
+float getTimeDifference() {
   struct timeval now;
   gettimeofday(&now, NULL);
   long nowMicroseconds = (now.tv_sec * 10 * DECISECONDS_TO_MICROSECONDS) + now.tv_usec;
@@ -208,17 +210,14 @@ void* threadFunction(void* flowItem) {
 
   // Wait for arrival (converted from deciseconds to microseconds)
   usleep(f->arrivalTime * DECISECONDS_TO_MICROSECONDS);
-
-  printf("Flow %2d arrives: arrival time (%.2f), transmission time (%.1f), priority (%2d). \n", f->id, getTimeDiff(), f->transmissionTime * 0.1, f->priority);
+  printf("Flow %2d arrives: arrival time (%.2f), transmission time (%.1f), priority (%2d). \n", f->id, getTimeDifference(), f->transmissionTime * 0.1, f->priority);
 
   requestPipe(f);
 
-  printf("Flow %2d starts its transmission at time %.2f. \n", f->id, getTimeDiff());
-
   // Sleep for transmission time (converted from deciseconds to microseconds)
+  printf("Flow %2d starts its transmission at time %.2f. \n", f->id, getTimeDifference());
   usleep(f->transmissionTime * DECISECONDS_TO_MICROSECONDS);
-
-  printf("Flow %2d finishes its transmission at time %.1f. \n", f->id, getTimeDiff());
+  printf("Flow %2d finishes its transmission at time %.1f. \n", f->id, getTimeDifference());
 
   releasePipe(f);
 
@@ -276,7 +275,7 @@ void parseFlows(char fileContents[MAX_INPUT_SIZE][MAX_INPUT_SIZE], int numFlows)
 */
 int main(int argc, char* argv[]) {
   if (argc < 2) {
-    printf("Usage: MFS <flows text file>\n");
+    printf("Error: use as follows MFS <flows text file>\n");
     return 1;
   }
 
