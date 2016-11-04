@@ -119,8 +119,8 @@ int compareFlows(flow* f1, flow* f2) {
 void sortQueue() {
   int i;
   int j;
-  for (i = transmitting; i < queueLength; i++) {
-    for (j = transmitting; j < queueLength-1; j++) {
+  for (i = isTransmitting; i < queueLength; i++) {
+    for (j = isTransmitting; j < queueLength-1; j++) {
       if (compareFlows(queue[j], queue[j+1]) == 1) {
         flow* temp = queue[j+1];
         queue[j+1] = queue[j];
