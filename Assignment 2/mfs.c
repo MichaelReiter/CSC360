@@ -37,7 +37,7 @@ pthread_cond_t convar;
 struct timeval start;
 int transmittingFlowId;
 int transmitting = FALSE;
-int queueSize = 0;
+int queueLength = 0;
 
 /* ---------- Helper functions ---------- */
 
@@ -115,7 +115,7 @@ int compareFlows(flow* f1, flow* f2) {
 
 void printQueue() {
   int i;
-  for (i = 0; i < queueSize; i++) {
+  for (i = 0; i < queueLength; i++) {
     printf("%d\n", queue[i]->id);
   }
 }
@@ -127,8 +127,8 @@ void printQueue() {
 void sortQueue() {
   int i;
   int j;
-  for (i = transmitting; i < queueSize; i++) {
-    for (j = transmitting; j < queueSize-1; j++) {
+  for (i = transmitting; i < queueLength; i++) {
+    for (j = transmitting; j < queueLength-1; j++) {
       if (compareFlows(queue[j], queue[j+1]) == 1) {
         flow* temp = queue[j+1];
         queue[j+1] = queue[j];
@@ -143,8 +143,8 @@ void sortQueue() {
   Inserts f into queue
 */
 void insertIntoQueue(flow* f) {
-  queue[queueSize] = f;
-  queueSize++;
+  queue[queueLength] = f;
+  queueLength++;
 }
 
 /*
@@ -152,11 +152,11 @@ void insertIntoQueue(flow* f) {
 */
 void removeFromQueue() {
   int i;
-  for (i = 0; i < queueSize-1; i++) {
+  for (i = 0; i < queueLength-1; i++) {
     queue[i] = queue[i+1];
   }
-  queueSize--;
-  // queue[queueSize] = NULL;
+  queueLength--;
+  // queue[queueLength] = NULL;
 }
 
 /*
@@ -165,13 +165,13 @@ void removeFromQueue() {
 */
 void requestPipe(flow* f) {
   pthread_mutex_lock(&mutex);
-  if (transmitting == FALSE && queueSize == 0) {
+  if (transmitting == FALSE && queueLength == 0) {
     transmittingFlowId = f->id;
     transmitting = TRUE;
     insertIntoQueue(f);
     // printQueue();
     // sortQueue();
-  } else if (transmitting == FALSE && queueSize > 0) {
+  } else if (transmitting == FALSE && queueLength > 0) {
     insertIntoQueue(f);
     // printQueue();
     sortQueue();
@@ -197,7 +197,7 @@ void releasePipe(flow* f) {
 
   removeFromQueue();
 
-  if (queueSize > 0) {
+  if (queueLength > 0) {
     transmittingFlowId = queue[0]->id;
   } else {
     transmittingFlowId = -1;
@@ -235,7 +235,9 @@ void* threadFunction(void* flowItem) {
 
   requestPipe(f);
 
-  // printf("Flow %2d waits for the finish of flow %2d. \n", f->id, transmittingFlowId);
+  if (f->id != transmittingFlowId) {
+    printf("Flow %2d waits for the finish of flow %2d. \n", f->id, transmittingFlowId);
+  }
   while (transmittingFlowId != f->id);
 
   float actualTransmissionTime = getTimeDiff();
@@ -245,10 +247,11 @@ void* threadFunction(void* flowItem) {
   int transmissionSleep = f->transmissionTime * MICROSECONDS_CONVERSION_FACTOR;
   usleep(transmissionSleep);
 
-  releasePipe(f);
-
   float actualFinishTime = getTimeDiff();
   printf("Flow %2d finishes its transmission at time %.1f. \n", f->id, actualFinishTime);
+
+  releasePipe(f);
+
   pthread_exit(NULL);
 }
 
