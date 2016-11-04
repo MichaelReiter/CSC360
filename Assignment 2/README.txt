@@ -25,4 +25,4 @@ For each flow:
 7. Immediately following is an integer that indicates the priority of the flow.
 8. A newline ends a line.
 
-A sample input is included (flows.txt).
+A sample input is included (flow.txt).
