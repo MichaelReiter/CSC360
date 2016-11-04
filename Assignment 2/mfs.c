@@ -160,7 +160,10 @@ void removeFromQueue() {
   Acquires the transmission pipe
 */
 void requestPipe(flow* f) {
-  pthread_mutex_lock(&mutex);
+  if (pthread_mutex_lock(&mutex) != 0) {
+    printf("Error: failed to lock mutex\n");
+    exit(1);
+  }
 
   insertIntoQueue(f);
   sortQueue();
@@ -169,11 +172,17 @@ void requestPipe(flow* f) {
     printf("Flow %2d waits for the finish of flow %2d. \n", f->id, queue[0]->id);
   }
   while (queue[0]->id != f->id) {
-    pthread_cond_wait(&convar, &mutex);
+    if (pthread_cond_wait(&convar, &mutex) != 0) {
+      printf("Error: failed to wait for convar\n");
+      exit(1);
+    }
   }
   isTransmitting = TRUE;
 
-  pthread_mutex_unlock(&mutex);
+  if (pthread_mutex_unlock(&mutex) != 0) {
+    printf("Error: failed to unlock mutex\n");
+    exit(1);
+  }
 }
 
 /*
@@ -181,13 +190,23 @@ void requestPipe(flow* f) {
   Releases the transmission pipe
 */
 void releasePipe(flow* f) {
-  pthread_mutex_lock(&mutex);
+  if (pthread_mutex_lock(&mutex) != 0) {
+    printf("Error: failed to lock mutex\n");
+    exit(1);
+  }
 
-  pthread_cond_broadcast(&convar);
+  if (pthread_cond_broadcast(&convar) != 0) {
+    printf("Error: failed to broadcast\n");
+    exit(1);
+  }
+
   removeFromQueue();
   isTransmitting = FALSE;
 
-  pthread_mutex_unlock(&mutex);
+  if (pthread_mutex_unlock(&mutex) != 0) {
+    printf("Error: failed to unlock mutex\n");
+    exit(1);
+  }
 }
 
 /*
@@ -276,14 +295,14 @@ void parseFlows(char fileContents[MAX_INPUT_SIZE][MAX_INPUT_SIZE], int numFlows)
 int main(int argc, char* argv[]) {
   if (argc < 2) {
     printf("Error: use as follows MFS <flows text file>\n");
-    return 1;
+    exit(1);
   }
 
   // Read flows text file
   char fileContents[MAX_INPUT_SIZE][MAX_INPUT_SIZE];
   if (readFlowsFile(argv[1], fileContents) != 0) {
     printf("Error: Failed to read flows file\n");
-    return 1;
+    exit(1);
   }
 
   // Parse input into array of flow*
@@ -291,13 +310,25 @@ int main(int argc, char* argv[]) {
   parseFlows(fileContents, numFlows);
 
   // Initialize mutex and conditional variable
-  pthread_mutex_init(&mutex, NULL);
-  pthread_cond_init(&convar, NULL);
+  if (pthread_mutex_init(&mutex, NULL) != 0) {
+    printf("Error: failed to initialize mutex\n");
+    exit(1);
+  }
+  if (pthread_cond_init(&convar, NULL) != 0) {
+    printf("Error: failed to initialize conditional variable\n");
+    exit(1);
+  }
 
   // Create threads in a joinable state
   pthread_attr_t attr;
-  pthread_attr_init(&attr);
-  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+  if (pthread_attr_init(&attr) != 0) {
+    printf("Error: failed to initialize attr\n");
+    exit(1);
+  }
+  if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE) != 0) {
+    printf("Error: failed to set detachstate\n");
+    exit(1);
+  }
 
   gettimeofday(&start, NULL);
 
@@ -306,7 +337,7 @@ int main(int argc, char* argv[]) {
   for (i = 0; i < numFlows; i++) {
     if (pthread_create(&threads[i], &attr, threadFunction, (void*)&flows[i]) != 0){
       printf("Error: failed to create pthread.\n");
-      return 1;
+      exit(1);
     }
   }
 
@@ -314,14 +345,23 @@ int main(int argc, char* argv[]) {
   for (i = 0; i < numFlows; i++) {
     if (pthread_join(threads[i], NULL) != 0) {
       printf("Error: failed to join pthread.\n");
-      return 1;
+      exit(1);
     }
   }
 
   // Destroy mutex and conditional variable
-  pthread_attr_destroy(&attr);
-  pthread_mutex_destroy(&mutex);
-  pthread_cond_destroy(&convar);
+  if (pthread_attr_destroy(&attr) != 0) {
+    printf("Error: failed to destroy attr\n");
+    exit(1);
+  }
+  if (pthread_mutex_destroy(&mutex) != 0) {
+    printf("Error: failed to destroy mutex\n");
+    exit(1);
+  }
+  if (pthread_cond_destroy(&convar) != 0) {
+    printf("Error: failed to destroy convar\n");
+    exit(1);
+  }
   pthread_exit(NULL);
 
   return 0;
