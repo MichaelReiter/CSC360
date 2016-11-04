@@ -45,7 +45,7 @@ int queueLength = 0;
   filePath: the path of the file to read
   fileContents: an array of strings to which to write the read file contents
   Reads the file at filePath into the string array fileContents
-  Returns TRUE if successful, FALSE otherwise
+  Returns 0 if successful, 1 otherwise
 */
 int readFlowsFile(char* filePath, char fileContents[MAX_INPUT_SIZE][MAX_INPUT_SIZE]) {
   FILE *fp = fopen(filePath, "r");
@@ -55,10 +55,9 @@ int readFlowsFile(char* filePath, char fileContents[MAX_INPUT_SIZE][MAX_INPUT_SI
       i++;
     }
     fclose(fp);
-    return TRUE;
+    return 0;
   } else {
-    printf("Error: could not read file\n");
-    return FALSE;
+    return 1;
   }
 }
 
@@ -214,9 +213,9 @@ void releasePipe(flow* f) {
 float getTimeDiff() {
   struct timeval now;
   gettimeofday(&now, NULL);
-  long nowMicroseconds = (now.tv_sec * 1000000) + now.tv_usec;
-  long startMicroseconds = (start.tv_sec * 1000000) + start.tv_usec;
-  return (float)(nowMicroseconds - startMicroseconds) / 1000000;
+  long nowMicroseconds = (now.tv_sec * 10 * MICROSECONDS_CONVERSION_FACTOR) + now.tv_usec;
+  long startMicroseconds = (start.tv_sec * 10 * MICROSECONDS_CONVERSION_FACTOR) + start.tv_usec;
+  return (float)(nowMicroseconds - startMicroseconds) / (10 * MICROSECONDS_CONVERSION_FACTOR);
 }
 
 /*
@@ -227,11 +226,9 @@ void* threadFunction(void* flowItem) {
   flow* f = (flow*)flowItem;
 
   // Wait for arrival (converted from deciseconds to microseconds)
-  int arrivalSleep = f->arrivalTime * MICROSECONDS_CONVERSION_FACTOR;
-  usleep(arrivalSleep);
+  usleep(f->arrivalTime * MICROSECONDS_CONVERSION_FACTOR);
 
-  float actualArrivalTime = getTimeDiff();
-  printf("Flow %2d arrives: arrival time (%.2f), transmission time (%.1f), priority (%2d). \n", f->id, actualArrivalTime, f->transmissionTime * 0.1, f->priority);
+  printf("Flow %2d arrives: arrival time (%.2f), transmission time (%.1f), priority (%2d). \n", f->id, getTimeDiff(), f->transmissionTime * 0.1, f->priority);
 
   requestPipe(f);
 
@@ -240,15 +237,12 @@ void* threadFunction(void* flowItem) {
   }
   while (transmittingFlowId != f->id);
 
-  float actualTransmissionTime = getTimeDiff();
-  printf("Flow %2d starts its transmission at time %.2f. \n", f->id, actualTransmissionTime);
+  printf("Flow %2d starts its transmission at time %.2f. \n", f->id, getTimeDiff());
 
   // Sleep for transmission time (converted from deciseconds to microseconds)
-  int transmissionSleep = f->transmissionTime * MICROSECONDS_CONVERSION_FACTOR;
-  usleep(transmissionSleep);
+  usleep(f->transmissionTime * MICROSECONDS_CONVERSION_FACTOR);
 
-  float actualFinishTime = getTimeDiff();
-  printf("Flow %2d finishes its transmission at time %.1f. \n", f->id, actualFinishTime);
+  printf("Flow %2d finishes its transmission at time %.1f. \n", f->id, getTimeDiff());
 
   releasePipe(f);
 
@@ -312,10 +306,10 @@ int main(int argc, char* argv[]) {
 
   // Read flows text file
   char fileContents[MAX_INPUT_SIZE][MAX_INPUT_SIZE];
-  int success = readFlowsFile(argv[1], fileContents);
   
   // Handle file I/O error
-  if (!success) {
+  if (readFlowsFile(argv[1], fileContents) != 0) {
+    printf("Error: Failed to read flows file\n");
     return 1;
   }
 
@@ -345,7 +339,10 @@ int main(int argc, char* argv[]) {
 
   // Wait for all threads to terminate
   for (i = 0; i < numFlows; i++) {
-    pthread_join(threads[i], NULL);
+    if (pthread_join(threads[i], NULL) != 0) {
+      printf("Error: failed to join pthread.\n");
+      return 1;
+    }
   }
 
   // Free memory, and destroy mutex and conditional variable
