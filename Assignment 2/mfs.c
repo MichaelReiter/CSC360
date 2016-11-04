@@ -157,19 +157,17 @@ void removeFromQueue() {
 void requestPipe(flow* f) {
   pthread_mutex_lock(&mutex);
 
-  if (isTransmitting == FALSE && queueLength == 0) {
-    transmittingFlow = f;
-    isTransmitting = TRUE;
-    insertIntoQueue(f);
-  } else if (isTransmitting == FALSE && queueLength > 0) {
-    insertIntoQueue(f);
-    sortQueue();
-    transmittingFlow = queue[0];
-    isTransmitting = TRUE;
-  } else {
-    insertIntoQueue(f);
-    sortQueue();
+  insertIntoQueue(f);
+  sortQueue();
+
+  if (f->id != queue[0]->id) {
+    printf("Flow %2d waits for the finish of flow %2d. \n", f->id, queue[0]->id);
   }
+  while (queue[0]->id != f->id) {
+    pthread_cond_wait(&convar, &mutex);
+  }
+
+  isTransmitting = TRUE;
 
   pthread_mutex_unlock(&mutex);
 }
@@ -181,14 +179,11 @@ void requestPipe(flow* f) {
 void releasePipe(flow* f) {
   pthread_mutex_lock(&mutex);
 
+  pthread_cond_broadcast(&convar);
+  
   removeFromQueue();
 
-  if (queueLength > 0) {
-    transmittingFlow = queue[0];
-  } else {
-    transmittingFlow = NULL;
-    isTransmitting = FALSE;
-  }
+  isTransmitting = FALSE;
 
   pthread_mutex_unlock(&mutex);
 }
@@ -217,11 +212,6 @@ void* threadFunction(void* flowItem) {
   printf("Flow %2d arrives: arrival time (%.2f), transmission time (%.1f), priority (%2d). \n", f->id, getTimeDiff(), f->transmissionTime * 0.1, f->priority);
 
   requestPipe(f);
-
-  if (f->id != transmittingFlow->id) {
-    printf("Flow %2d waits for the finish of flow %2d. \n", f->id, transmittingFlow->id);
-  }
-  while (transmittingFlow->id != f->id);
 
   printf("Flow %2d starts its transmission at time %.2f. \n", f->id, getTimeDiff());
 
