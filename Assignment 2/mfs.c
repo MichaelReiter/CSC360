@@ -35,6 +35,7 @@ pthread_t threads[MAXFLOW]; // Each thread executes one flow
 pthread_mutex_t mutex;
 pthread_cond_t convar;
 struct timeval start;
+int queueSize = 0;
 
 /* ---------- Helper functions ---------- */
 
@@ -102,16 +103,14 @@ int compareFlows(flow* f1, flow* f2) {
 }
 
 /*
-  queue: the queue to be sorted
-  n: the size of queue
   Sorts queue in place using Bubblesort
   (sometimes it's worth sacrificing running time to save programmer time)
 */
-void sortQueue(flow** queue, int n) {
+void sortQueue() {
   int i;
   int j;
-  for (i = 0; i < n; i++) {
-    for (j = 0; j < n-1; j++) {
+  for (i = 0; i < queueSize; i++) {
+    for (j = 0; j < queueSize-1; j++) {
       if (compareFlows(queue[j], queue[j+1]) == 1) {
         flow* temp = queue[j+1];
         queue[j+1] = queue[j];
@@ -122,11 +121,31 @@ void sortQueue(flow** queue, int n) {
 }
 
 /*
+  f: a flow* to insert
+  Inserts f into queue
+*/
+void insertIntoQueue(flow* f) {
+  queue[queueSize] = f;
+  queueSize++;
+}
+
+/*
+  Removes the least recently inserted flow from the queue
+*/
+void removeFromQueue() {
+  int i;
+  for (i = 0; i < queueSize; i++) {
+    queue[i] = queue[i+1];
+  }
+  queueSize--;
+  queue[queueSize] = NULL;
+}
+
+/*
   f: a flow
   Acquires the transmission pipe
 */
 void requestPipe(flow* f) {
-  // Lock mutex
   pthread_mutex_lock(&mutex);
 
   // if transmission pipe available && queue is empty {
@@ -140,7 +159,7 @@ void requestPipe(flow* f) {
   // pthread_cond_wait(&convar, &mutex);
 
   // // Add f in queue then sort it
-  // sortQueue(queue, queueSize)
+  // sortQueue();
 
   // printf("Flow %2d waits for the finish of flow %2d. \n", f->id, f2->id);
   // // key point here..
@@ -151,7 +170,6 @@ void requestPipe(flow* f) {
 
   // // Update queue
 
-  // Unlock mutex
   pthread_mutex_unlock(&mutex);
 }
 
@@ -160,8 +178,10 @@ void requestPipe(flow* f) {
   Releases the transmission pipe
 */
 void releasePipe(flow* f) {
+  pthread_mutex_lock(&mutex);
   // use broadcast to ensure you get the right one
   // only about 5 lines
+  pthread_mutex_unlock(&mutex);
 }
 
 /*
