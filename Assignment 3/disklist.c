@@ -23,7 +23,15 @@ typedef struct something {
 
 /* ---------- Helper functions ---------- */
 
-
+/*
+	Prints the disk image directory listing
+*/
+void printDirectoryListing() {
+	int i;
+	for (i = 0; i < numFiles; i++) {
+		printf("%s %10s %20s %s\n", fileType, fileSize, fileName, fileCreationDateTime);
+	}
+}
 
 /* ---------- Main ---------- */
 
@@ -35,6 +43,8 @@ int main(int argc, char* argv[]) {
 		printf("Error: use as follows diskinfo <file system image>\n");
 		exit(1);
 	}
+
+	printDirectoryListing();
 
 	return 0;
 }
