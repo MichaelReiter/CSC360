@@ -1,8 +1,11 @@
 .phony all:
 all: sfs
 
-sfs: sfs.c
-	clear && gcc -Wall -pthread sfs.c -o diskinfo && ./diskinfo
+sfs:
+	gcc -Wall diskinfo.c -o diskinfo
+	gcc -Wall disklist.c -o disklist
+	gcc -Wall diskget.c -o diskget
+	gcc -Wall diskput.c -o diskput
 
 .PHONY clean:
 clean:
