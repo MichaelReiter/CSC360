@@ -23,6 +23,21 @@ typedef struct something {
 
 /* ---------- Helper functions ---------- */
 
+/*
+	Prints file system image information
+*/
+void printInfo() {
+	printf("OS Name:\t%s\n", osName);
+	printf("Label of the disk:\t%s\n", diskLabel);
+	printf("Total size of the disk:\t%d\n", diskSize);
+	printf("Free size of the disk:\t%d\n", freeSize);
+	printf("==============\n");
+	printf("The number of files in the root directory (not including subdirectories):\n");
+	printf("%d\n", numberOfRootFiles);
+	printf("==============\n");
+	printf("Number of FAT copies:\t%d\n", numberOfFatCopies);
+	printf("Sectors per FAT:\t%d\n", sectorsPerFat);
+}
 
 /* ---------- Main ---------- */
 
