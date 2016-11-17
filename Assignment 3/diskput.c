@@ -23,18 +23,27 @@ typedef struct something {
 
 /* ---------- Helper functions ---------- */
 
-
+/*
+	Writes a file to an input file system image
+*/
+void writeFile() {
+	// if (insufficient space) {
+	// 	printf("Not enough free space in the disk image.\n");
+	// }
+}
 
 /* ---------- Main ---------- */
 
 /*
-	Displays information about an input file system
+	Writes an input file from the current directory to an input file system image
 */
 int main(int argc, char* argv[]) {
-	if (argc < 2) {
-		printf("Error: use as follows diskinfo <file system image>\n");
+	if (argc < 3) {
+		printf("Error: use as follows diskinfo <file system image> <file>\n");
 		exit(1);
 	}
+
+	writeFile();
 
 	return 0;
 }

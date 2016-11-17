@@ -27,16 +27,16 @@ typedef struct something {
 	Prints the disk image directory listing
 */
 void printDirectoryListing() {
-	int i;
-	for (i = 0; i < numFiles; i++) {
-		printf("%s %10s %20s %s\n", fileType, fileSize, fileName, fileCreationDateTime);
-	}
+	// int i;
+	// for (i = 0; i < numFiles; i++) {
+	// 	printf("%s %10s %20s %s\n", fileType, fileSize, fileName, fileCreationDateTime);
+	// }
 }
 
 /* ---------- Main ---------- */
 
 /*
-	Displays information about an input file system
+	Displays information about files in an input file system image
 */
 int main(int argc, char* argv[]) {
 	if (argc < 2) {

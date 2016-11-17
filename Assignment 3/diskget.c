@@ -23,18 +23,27 @@ typedef struct something {
 
 /* ---------- Helper functions ---------- */
 
-
+/*
+	Reads a file from a file system image
+*/
+void copyFile() {
+	// if (file not found) {
+	// 	printf("File not found.\n");
+	// }
+}
 
 /* ---------- Main ---------- */
 
 /*
-	Displays information about an input file system
+	Copies an input file from an input file system image to the current directory
 */
 int main(int argc, char* argv[]) {
-	if (argc < 2) {
-		printf("Error: use as follows diskinfo <file system image>\n");
+	if (argc < 3) {
+		printf("Error: use as follows diskinfo <file system image> <file>\n");
 		exit(1);
 	}
+
+	copyFile();
 
 	return 0;
 }
