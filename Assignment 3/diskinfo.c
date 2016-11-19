@@ -34,7 +34,15 @@ void getOsName(char* osname, char* p) {
 */
 int getSectorsPerFat(char* p) {
 	// read 2 bytes starting at byte 22
-	return 0;
+	// int result;
+	// int* resultBuffer = malloc(2*sizeof(int));
+
+ //  resultBuffer[0] = p[22];
+ //  resultBuffer[1] = p[23];
+ //  result = (resultBuffer[0] << 8) + resultBuffer[1];
+
+ //  free(resultBuffer);
+  return 0;
 }
 
 /*
@@ -43,7 +51,10 @@ int getSectorsPerFat(char* p) {
 	Sets diskLabel to the volume label
 */
 void getDiskLabel(char* diskLabel, char* p) {
-	// *diskLabel = "test";
+	int i;
+	for (i = 43; i < 54; i++) {
+		diskLabel[i] = p[i];
+	}
 }
 
 /*
@@ -136,7 +147,7 @@ int main(int argc, char* argv[]) {
 	int numberOfFatCopies = getNumberOfFatCopies(p);
 	int sectorsPerFat = getSectorsPerFat(p);
 	printInfo(osName, diskLabel, diskSize, freeSize, numberOfRootFiles, numberOfFatCopies, sectorsPerFat);
-	
+
 	// Clean up
 	close(fd);
 	free(osName);
