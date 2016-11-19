@@ -2,10 +2,10 @@
 all: sfs
 
 sfs:
-	gcc -Wall diskinfo.c -o diskinfo
-	gcc -Wall disklist.c -o disklist
-	gcc -Wall diskget.c -o diskget
-	gcc -Wall diskput.c -o diskput
+	gcc -Wall a3helpers.c diskinfo.c -o diskinfo
+	gcc -Wall a3helpers.c disklist.c -o disklist
+	gcc -Wall a3helpers.c diskget.c -o diskget
+	gcc -Wall a3helpers.c diskput.c -o diskput
 
 .PHONY clean:
 clean:
