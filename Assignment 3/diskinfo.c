@@ -37,11 +37,11 @@ int getSectorsPerFat(char* p) {
 	// int result;
 	// int* resultBuffer = malloc(2*sizeof(int));
 
- //  resultBuffer[0] = p[22];
- //  resultBuffer[1] = p[23];
- //  result = (resultBuffer[0] << 8) + resultBuffer[1];
+  // resultBuffer[0] = p[22];
+  // resultBuffer[1] = p[23];
+  // result = (resultBuffer[0] << 8) + resultBuffer[1];
 
- //  free(resultBuffer);
+  // free(resultBuffer);
   return 0;
 }
 
@@ -91,8 +91,7 @@ int getNumberOfRootFiles(char* p) {
 	Returns the number of copies of the FAT table
 */
 int getNumberOfFatCopies(char* p) {
-
-	return 0;
+	return p[16];
 }
 
 /*
