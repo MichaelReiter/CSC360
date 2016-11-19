@@ -18,7 +18,7 @@
 
 /*
 	osname: a char array to read the os name into
-	p: a pointer to the memory
+	p: a pointer to the mapped memory
 	Reads the OS name read from a disk image
 */
 void getOsName(char* osname, char* p) {
@@ -29,7 +29,7 @@ void getOsName(char* osname, char* p) {
 }
 
 /*
-	p: a pointer to the memory
+	p: a pointer to the mapped memory
 	Returns the number of sectors per FAT read from p
 */
 int getSectorsPerFat(char* p) {
@@ -39,7 +39,7 @@ int getSectorsPerFat(char* p) {
 
 /*
 	diskLabel: a character pointer to store the volume label
-	p: a pointer to the memory
+	p: a pointer to the mapped memory
 	Sets diskLabel to the volume label
 */
 void getDiskLabel(char* diskLabel, char* p) {
@@ -47,7 +47,7 @@ void getDiskLabel(char* diskLabel, char* p) {
 }
 
 /*
-	p: a pointer to the memory
+	p: a pointer to the mapped memory
 	Returns total disk size
 */
 int getTotalSize(char* p) {
@@ -67,7 +67,7 @@ int getTotalSize(char* p) {
 }
 
 /*
-	p: a pointer to the memory
+	p: a pointer to the mapped memory
 	Returns the number of files in the root directory
 */
 int getNumberOfRootFiles(char* p) {
@@ -76,7 +76,7 @@ int getNumberOfRootFiles(char* p) {
 }
 
 /*
-	p: a pointer to the memory
+	p: a pointer to the mapped memory
 	Returns the number of copies of the FAT table
 */
 int getNumberOfFatCopies(char* p) {
@@ -125,6 +125,7 @@ int main(int argc, char* argv[]) {
   	exit(1);
   }
 
+  // Read information from disk image then print it
 	char* osName = malloc(sizeof(char));
 	getOsName(osName, p);
 	char* diskLabel = malloc(sizeof(char));

@@ -12,5 +12,5 @@ typedef struct something {
 
 /* ---------- Helper functions ---------- */
 
-int getSectorValue(int entry, char* mmap);
-int getFreeSize(int diskSize, char* mmap);
+int getSectorValue(int entry, char* p);
+int getFreeSize(int diskSize, char* p);

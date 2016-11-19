@@ -3,35 +3,32 @@
 #include "a3helpers.h"
 
 /*
-  entry: int representing entry in FAT table
-  p: a char* mapped to memory
-  Returns an int representing the value of the FAT table ???
+  n: an entry in FAT table
+  p: a pointer to the mapped memory
+  Returns the value of the FAT table at n
 */
-int getSectorValue(int entry, char* p) {
-  // base address of FAT table
+int getSectorValue(int n, char* p) {
+  int result;
   int base = 0x200;
-  int* entryBuffer = malloc(2 * sizeof(int));
+  int* resultBuffer = malloc(2*sizeof(int));
 
-  if ((entry % 2) == 0) {
-    // low 4 bits
-    entryBuffer[0] = p[base + 1 + ((3 * entry) / 2)] & 0x0F;
-    // all 8 bits
-    entryBuffer[1] = p[base + ((3 * entry) / 2)] & 0xFF;
-    return ((entryBuffer[0] << 8) + entryBuffer[1]);
+  if ((n % 2) == 0) {
+    resultBuffer[0] = p[1 + base + ((3*n) / 2)] & 0x0F;
+    resultBuffer[1] = p[base + ((3*n) / 2)] & 0xFF;
+    result = (resultBuffer[0] << 8) + resultBuffer[1];
   } else {
-    // high 4 bits
-    entryBuffer[0] = p[base + ((3 * entry) / 2)] & 0xF0;
-    // all 8 bits
-    entryBuffer[1] = p[base + ((3 * entry) / 2)] & 0xFF;
-    return (entryBuffer[0] >> 4) + (entryBuffer[1] << 4);
+    resultBuffer[0] = p[base + (int)((3*n) / 2)] & 0xF0;
+    resultBuffer[1] = p[1 + base + (int)((3*n) / 2)] & 0xFF;
+    result = (resultBuffer[0] >> 4) + (resultBuffer[1] << 4);
   }
 
-  free(entryBuffer);
+  free(resultBuffer);
+  return result;
 }
 
 /*
   diskSize: the total amount of bytes on disk
-  p: a pointer to the memory
+  p: a pointer to the mapped memory
   Returns the amount of free space on disk
 */
 int getFreeSize(int diskSize, char* p) {
@@ -39,7 +36,6 @@ int getFreeSize(int diskSize, char* p) {
 
   int i;
   for (i = 2; i <= (diskSize / SECTOR_SIZE); i++) {
-    // if sector is unused
     if (getSectorValue(i, p) == 0x000) {
       count++;
     }
