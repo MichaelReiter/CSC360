@@ -24,7 +24,7 @@
 void getOsName(char* osname, char* p) {
 	int i;
 	for (i = 0; i < 8; i++) {
-		osname[i] = p[3+i];
+		osname[i] = p[i+3];
 	}
 }
 
@@ -33,27 +33,18 @@ void getOsName(char* osname, char* p) {
 	Returns the number of sectors per FAT read from p
 */
 int getSectorsPerFat(char* p) {
-	// read 2 bytes starting at byte 22
-	// int result;
-	// int* resultBuffer = malloc(2*sizeof(int));
-
-  // resultBuffer[0] = p[22];
-  // resultBuffer[1] = p[23];
-  // result = (resultBuffer[0] << 8) + resultBuffer[1];
-
-  // free(resultBuffer);
-  return 0;
+	return p[22] + (p[23] << 8);
 }
 
 /*
 	diskLabel: a character pointer to store the volume label
 	p: a pointer to the mapped memory
-	Sets diskLabel to the volume label
+	Reads the volume label into diskLabel
 */
 void getDiskLabel(char* diskLabel, char* p) {
 	int i;
-	for (i = 43; i < 54; i++) {
-		diskLabel[i] = p[i];
+	for (i = 0; i < 11; i++) {
+		diskLabel[i] = p[i+43];
 	}
 }
 
@@ -62,19 +53,9 @@ void getDiskLabel(char* diskLabel, char* p) {
 	Returns total disk size
 */
 int getTotalSize(char* p) {
-	int* temp1 = malloc(sizeof(int));
-	int* temp2 = malloc(sizeof(int));
-	int result;
-
-	*temp1 = p[19];
-	*temp2 = p[20];
-
-	// Use a for loop here if necesary
-	result = *temp1 + ((*temp2) << 8);
-	// result = (p[19] << 0) | (p[20] << 8);
-	free(temp1);
-	free(temp2);
-	return result;
+	int bytesPerSector = p[11] + (p[12] << 8);
+	int totalSectorCount = p[19] + (p[20] << 8);
+	return bytesPerSector * totalSectorCount;
 }
 
 /*
@@ -82,19 +63,29 @@ int getTotalSize(char* p) {
 	Returns the number of files in the root directory
 */
 int getNumberOfRootFiles(char* p) {
-
+	int i;
+	for (i = 19; i <= 32; i++) {
+		// printf("%d\n", p[i]);
+	}
 	return 0;
 }
 
 /*
 	p: a pointer to the mapped memory
-	Returns the number of copies of the FAT table
+	Returns the number of copies of the FAT
 */
 int getNumberOfFatCopies(char* p) {
 	return p[16];
 }
 
 /*
+	osName: name of operating system
+	diskLabel: label of volume
+	diskSize: total disk size in bytes
+	freeSize: total free disk size in bytes
+	numberOfRootFiles: number of files in the disk's root directory excluding subdirectories
+	numberOfFatCopies: number of copies of the disk's FAT
+	sectorsPerFat: number of sectors in a FAT
 	Prints file system image information
 */
 void printInfo(char* osName, char* diskLabel, int diskSize, int freeSize, int numberOfRootFiles, int numberOfFatCopies, int sectorsPerFat) {
@@ -129,13 +120,13 @@ int main(int argc, char* argv[]) {
 	}
 	struct stat buf;
 	fstat(fd, &buf);
-  char* p = mmap(NULL, buf.st_size, PROT_READ, MAP_SHARED, fd, 0);
-  if (p == MAP_FAILED) {
-  	printf("Error: failed to map memory\n");
-  	exit(1);
-  }
+	char* p = mmap(NULL, buf.st_size, PROT_READ, MAP_SHARED, fd, 0);
+	if (p == MAP_FAILED) {
+		printf("Error: failed to map memory\n");
+		exit(1);
+	}
 
-  // Read information from disk image then print it
+	// Read information from disk image then print it
 	char* osName = malloc(sizeof(char));
 	getOsName(osName, p);
 	char* diskLabel = malloc(sizeof(char));
@@ -148,6 +139,7 @@ int main(int argc, char* argv[]) {
 	printInfo(osName, diskLabel, diskSize, freeSize, numberOfRootFiles, numberOfFatCopies, sectorsPerFat);
 
 	// Clean up
+	munmap(p, buf.st_size);
 	close(fd);
 	free(osName);
 	free(diskLabel);
