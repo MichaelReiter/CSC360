@@ -1,8 +1,11 @@
 /* ---------- Typedefs ---------- */
 
-typedef struct something {
-
-} something;
+typedef struct disk_file_t {
+  char fileType;
+  int fileSize;
+  char* fileName;
+  char* fileCreationDateTime;
+} disk_file_t;
 
 /* ---------- Constants and global variables ---------- */
 
