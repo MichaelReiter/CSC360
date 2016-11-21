@@ -43,8 +43,8 @@ int getSectorsPerFat(char* p) {
 */
 void getDiskLabel(char* diskLabel, char* p) {
 	int i;
-	for (i = 0; i < 11; i++) {
-		diskLabel[i] = p[i+43];
+	for (i = 0; i < 8; i++) {
+		diskLabel[i] = p[19 * SECTOR_SIZE + i + 96];
 	}
 }
 
@@ -63,11 +63,14 @@ int getTotalSize(char* p) {
 	Returns the number of files in the root directory
 */
 int getNumberOfRootFiles(char* p) {
+	int count = 0;
+
 	int i;
-	for (i = 19; i <= 32; i++) {
-		// printf("%d\n", p[i]);
+	for (i = 0; i < SECTOR_SIZE; i++) {
+		count++;
 	}
-	return 0;
+
+	return count;
 }
 
 /*
@@ -89,16 +92,15 @@ int getNumberOfFatCopies(char* p) {
 	Prints file system image information
 */
 void printInfo(char* osName, char* diskLabel, int diskSize, int freeSize, int numberOfRootFiles, int numberOfFatCopies, int sectorsPerFat) {
-	printf("OS Name:\t\t%s\n", osName);
-	printf("Label of the disk:\t%s\n", diskLabel);
-	printf("Total size of the disk:\t%d\n", diskSize);
-	printf("Free size of the disk:\t%d\n\n", freeSize); // number of free sectors times size of sector
+	printf("OS Name: %s\n", osName);
+	printf("Label of the disk: %s\n", diskLabel);
+	printf("Total size of the disk: %d bytes\n", diskSize);
+	printf("Free size of the disk: %d bytes\n\n", freeSize);
 	printf("==============\n");
-	printf("The number of files in the root directory (not including subdirectories):\n");
-	printf("%d\n", numberOfRootFiles);
-	printf("==============\n");
-	printf("Number of FAT copies:\t%d\n", numberOfFatCopies);
-	printf("Sectors per FAT:\t%d\n", sectorsPerFat);
+	printf("The number of files in the root directory (not including subdirectories): %d\n\n", numberOfRootFiles);
+	printf("=============\n");
+	printf("Number of FAT copies: %d\n", numberOfFatCopies);
+	printf("Sectors per FAT: %d\n", sectorsPerFat);
 }
 
 /* ---------- Main ---------- */
