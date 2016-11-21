@@ -12,8 +12,9 @@ typedef struct disk_file_t {
 #define TRUE 1
 #define FALSE 0
 #define SECTOR_SIZE 512
+#define LISTING_SIZE 512
 
 /* ---------- Helper functions ---------- */
 
-int getSectorValue(int entry, char* p);
+int readSector(int n, char* p);
 int getFreeSize(int diskSize, char* p);
