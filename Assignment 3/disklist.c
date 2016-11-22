@@ -17,22 +17,31 @@
 /* ---------- Helper functions ---------- */
 
 /*
+	n: a 32 bit unsigned integer to convert
+	Returns an integer converted to either big or little endian
+*/
+int endianSwap(int n) {
+	return ((n >> 24) & 0xff)    |
+         ((n << 8) & 0xff0000) |
+         ((n >> 8) & 0xff00)   |
+         ((n << 24) & 0xff000000);
+}
+
+/*
 	p: a pointer to the mapped memory
 	Prints the disk image directory listing
 */
 void printDirectoryListing(char* p) {
 	while (p[0] != 0x00) {
-		// printf("0x%02hhx\n", p[0]);
+
 		char fileType;
-		if (p[11] & (1 << 4)) {
+		if (p[11] & 0b00010000) {
 			fileType = 'D';
 		} else {
 			fileType = 'F';
 		}
 
-		int fileSize = 0;
-		// (p[28] << 24) + (p[29] << 16) + (p[30] << 8) + (p[31]);
-		// p[28] + p[29] + p[30]+ p[31];
+		int fileSize = (p[28]) + (p[29] << 8) + (p[30] << 16) + (p[31] << 24);
 
 		char* fileName = malloc(sizeof(char));
 		int i;
@@ -45,11 +54,17 @@ void printDirectoryListing(char* p) {
 
 		char* fileExtension = malloc(sizeof(char));
 		for (i = 0; i < 3; i++) {
-			fileExtension[i] = p[i + 8];
+			fileExtension[i] = p[i+8];
 		}
 
-		int fileDate = 0;
-		printf("%c %10d %20s.%s %d\n", fileType, fileSize, fileName, fileExtension, fileDate);
+		int year = (p[16] & 0b00011111) + 1980;
+		int month = ((p[16] & 0b11100000) >> 5) + ((p[17] & 0b00000011));
+		int day = (p[16] & 0x0);
+		int hour = (p[14] & 0x0);
+		int minute = (p[14] & 0x0);
+		if ((p[11] & 0b00000010) == 0 && (p[11] & 0b00001000) == 0) {
+			printf("%c %10d %20s.%s %d-%d-%d %02d:%02d\n", fileType, fileSize, fileName, fileExtension, year, month, day, hour, minute);
+		}
 
 		free(fileName);
 		free(fileExtension);
