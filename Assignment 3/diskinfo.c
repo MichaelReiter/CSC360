@@ -42,9 +42,16 @@ int getSectorsPerFat(char* p) {
 	Reads the volume label into diskLabel
 */
 void getDiskLabel(char* diskLabel, char* p) {
-	int i;
-	for (i = 0; i < 8; i++) {
-		diskLabel[i] = p[19 * SECTOR_SIZE + i + 96];
+	char* q = p + SECTOR_SIZE * 19;
+	while (q[0] != 0x00) {	
+		if (q[11] & 0x08) {
+			int i;
+			for (i = 0; i < 8; i++) {
+				diskLabel[i] = q[i];
+			}
+			break;
+		}
+		q += 32;
 	}
 }
 
@@ -65,9 +72,11 @@ int getTotalSize(char* p) {
 int getNumberOfRootFiles(char* p) {
 	int count = 0;
 
-	int i;
-	for (i = 0; i < SECTOR_SIZE; i++) {
-		count++;
+	while (p[0] != 0x00) {
+		if ((p[11] & 0b00000010) == 0 && (p[11] & 0b00001000) == 0 && (p[11] & 0b00010000) == 0) {
+			count++;
+		}
+		p += 32;
 	}
 
 	return count;
@@ -135,7 +144,7 @@ int main(int argc, char* argv[]) {
 	getDiskLabel(diskLabel, p);
 	int diskSize = getTotalSize(p);
 	int freeSize = getFreeSize(diskSize, p);
-	int numberOfRootFiles = getNumberOfRootFiles(p);
+	int numberOfRootFiles = getNumberOfRootFiles(p + SECTOR_SIZE * 19);
 	int numberOfFatCopies = getNumberOfFatCopies(p);
 	int sectorsPerFat = getSectorsPerFat(p);
 	printInfo(osName, diskLabel, diskSize, freeSize, numberOfRootFiles, numberOfFatCopies, sectorsPerFat);
