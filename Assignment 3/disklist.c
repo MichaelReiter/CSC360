@@ -35,7 +35,7 @@ void printDirectoryListing(char* p) {
 	while (p[0] != 0x00) {
 
 		char fileType;
-		if (p[11] & 0b00010000) {
+		if ((p[11] & 0b00010000) == 0b00010000) {
 			fileType = 'D';
 		} else {
 			fileType = 'F';
@@ -57,11 +57,11 @@ void printDirectoryListing(char* p) {
 			fileExtension[i] = p[i+8];
 		}
 
-		int year = (p[16] & 0b00011111) + 1980;
-		int month = ((p[16] & 0b11100000) >> 5) + ((p[17] & 0b00000011));
-		int day = (p[16] & 0x0);
-		int hour = (p[14] & 0x0);
-		int minute = (p[14] & 0x0);
+		int year = (((p[17] & 0b11111110)) >> 1) + 1980;
+		int month = ((p[16] & 0b11100000) >> 5) + (((p[17] & 0b00000001)) << 3);
+		int day = (p[16] & 0b00011111);
+		int hour = (p[15] & 0b11111000) >> 3;
+		int minute = ((p[14] & 0b11100000) >> 5) + ((p[15] & 0b00000111) << 3);
 		if ((p[11] & 0b00000010) == 0 && (p[11] & 0b00001000) == 0) {
 			printf("%c %10d %20s.%s %d-%d-%d %02d:%02d\n", fileType, fileSize, fileName, fileExtension, year, month, day, hour, minute);
 		}
