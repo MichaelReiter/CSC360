@@ -7,7 +7,7 @@
 	p: a pointer to the mapped memory
 	Returns the value of the FAT table at n
 */
-int readSector(int n, char* p) {
+int getFatEntry(int n, char* p) {
 	int result;
 	int firstByte;
 	int secondByte;
@@ -35,7 +35,7 @@ int getFreeSize(int diskSize, char* p) {
 
 	int i;
 	for (i = 2; i <= (diskSize / SECTOR_SIZE); i++) {
-		if (readSector(i, p) == 0x000) {
+		if (getFatEntry(i, p) == 0x000) {
 			count++;
 		}
 	}

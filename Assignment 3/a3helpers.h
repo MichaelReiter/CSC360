@@ -16,5 +16,5 @@ typedef struct disk_file_t {
 
 /* ---------- Helper functions ---------- */
 
-int readSector(int n, char* p);
+int getFatEntry(int n, char* p);
 int getFreeSize(int diskSize, char* p);
