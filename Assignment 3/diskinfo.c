@@ -42,16 +42,14 @@ int getSectorsPerFat(char* p) {
 	Reads the volume label into diskLabel
 */
 void getDiskLabel(char* diskLabel, char* p) {
-	char* q = p + SECTOR_SIZE * 19;
-	while (q[0] != 0x00) {	
-		if (q[11] & 0x08) {
+	while (p[0] != 0x00) {
+		if (p[11] == 8) {
 			int i;
 			for (i = 0; i < 8; i++) {
-				diskLabel[i] = q[i];
+				diskLabel[i] = p[i];
 			}
-			break;
 		}
-		q += 32;
+		p += 32;
 	}
 }
 
@@ -141,7 +139,7 @@ int main(int argc, char* argv[]) {
 	char* osName = malloc(sizeof(char));
 	getOsName(osName, p);
 	char* diskLabel = malloc(sizeof(char));
-	getDiskLabel(diskLabel, p);
+	getDiskLabel(diskLabel, p + SECTOR_SIZE * 19);
 	int diskSize = getTotalSize(p);
 	int freeSize = getFreeSize(diskSize, p);
 	int numberOfRootFiles = getNumberOfRootFiles(p + SECTOR_SIZE * 19);
