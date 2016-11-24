@@ -19,3 +19,4 @@ typedef struct disk_file_t {
 int getFatEntry(int n, char* p);
 int getFreeDiskSize(int diskSize, char* p);
 int getFileSize(char* fileName, char* p);
+int getFirstLogicalSector(char* fileName, char* p);

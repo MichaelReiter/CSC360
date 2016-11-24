@@ -32,16 +32,16 @@ int getFatEntry(int n, char* p) {
 	Returns the amount of free space on disk
 */
 int getFreeDiskSize(int diskSize, char* p) {
-	int count = 0;
+	int freeSectors = 0;
 
 	int i;
-	for (i = 2; i <= (diskSize / SECTOR_SIZE); i++) {
+	for (i = 2; i < (diskSize / SECTOR_SIZE); i++) {
 		if (getFatEntry(i, p) == 0x000) {
-			count++;
+			freeSectors++;
 		}
 	}
 
-	return SECTOR_SIZE * count;
+	return SECTOR_SIZE * freeSectors;
 }
 
 /*
@@ -69,7 +69,44 @@ int getFileSize(char* fileName, char* p) {
 			strcat(currentFileName, currentFileExtension);
 
 			if (strcmp(fileName, currentFileName) == 0) {
-				return (p[28]) + (p[29] << 8) + (p[30] << 16) + (p[31] << 24);
+				int fileSize = (p[28] & 0xFF) + ((p[29] & 0xFF) << 8) + ((p[30] & 0xFF) << 16) + ((p[31] & 0xFF) << 24);
+				return fileSize;
+			}
+
+			free(currentFileName);
+			free(currentFileExtension);
+		}
+		p += 32;
+	}
+	return -1;
+}
+
+/*
+	fileName: the file to check for
+	p: a pointer to the mapped memory
+	Returns first logical sector for the file
+*/
+int getFirstLogicalSector(char* fileName, char* p) {
+	while (p[0] != 0x00) {
+		if ((p[11] & 0b00000010) == 0 && (p[11] & 0b00001000) == 0) {
+			char* currentFileName = malloc(sizeof(char));
+			char* currentFileExtension = malloc(sizeof(char));
+			int i;
+			for (i = 0; i < 8; i++) {
+				if (p[i] == ' ') {
+					break;
+				}
+				currentFileName[i] = p[i];
+			}
+			for (i = 0; i < 3; i++) {
+				currentFileExtension[i] = p[i+8];
+			}
+
+			strcat(currentFileName, ".");
+			strcat(currentFileName, currentFileExtension);
+
+			if (strcmp(fileName, currentFileName) == 0) {
+				return (p[26]) + (p[27] << 8);
 			}
 
 			free(currentFileName);
