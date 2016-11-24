@@ -17,39 +17,42 @@
 /* ---------- Helper functions ---------- */
 
 /*
+	p: a pointer to the mapped memory
+	file: a pointer to the mapped file to write to
+	fileSize: the size of file in bytes
 	Reads a file from a disk image
 */
-void copyFile(char* p, char* file, int fileSize, int* firstLogicalSector, int physicalAddress) {
-	// int count = 0;
-	// int entry = *firstLogicalSector;
+void copyFile(char* source, char* destination, int fileSize, int firstLogicalSector, int physicalAddress) {
+	int count = 0;
+	int n = firstLogicalSector;
 
-	// // copy the first 512 bytes from the first logical address
-	// int i;
-	// for (i = 0; i < SECTOR_SIZE; i++) {
-	// 	if (count == *fileSize) {
-	// 		return;
-	// 	}
-	// 	destination[count] = source[physicalAddress + i];
-	// 	count++;
-	// }
+	// copy the first 512 bytes from the first logical address
+	int i;
+	for (i = 0; i < SECTOR_SIZE; i++) {
+		if (count == fileSize) {
+			return;
+		}
+		destination[count] = source[physicalAddress + i];
+		count++;
+	}
 
-	// // while the FAT table does not have an end of file value
-	// // read in another 512 bytes from the physical address
-	// while (getFatEntry(entry, source) != 0xFFF) {
-	// 	// get the value from the next FAT entry
-	// 	entry = getFatEntry(entry, source);
-	// 	// do the necesary math to get the physical address from the logical address
-	// 	physicalAddress = SECTOR_SIZE * (31 + entry);
+	// while the FAT table does not have an end of file value
+	// read in another 512 bytes from the physical address
+	while (getFatEntry(n, source) != 0xFFF) {
+		// get the value from the next FAT entry
+		n = getFatEntry(n, source);
+		// do the necesary math to get the physical address from the logical address
+		physicalAddress = SECTOR_SIZE * (31 + n);
 
-	// 	for (i = 0; i < SECTOR_SIZE; i++) {
-	// 		// check to see if we have read all bytes from the input file
-	// 		if (count == *fileSize) {
-	// 			break;
-	// 		}
-	// 		destination[count] = source[physicalAddress + i];
-	// 		count++;
-	// 	}
-	// }
+		for (i = 0; i < SECTOR_SIZE; i++) {
+			// check to see if we have read all bytes from the input file
+			if (count == fileSize) {
+				break;
+			}
+			destination[count] = source[physicalAddress + i];
+			count++;
+		}
+	}
 }
 
 /* ---------- Main ---------- */
@@ -79,44 +82,41 @@ int main(int argc, char* argv[]) {
 
 	int fileSize = getFileSize(argv[2], p + SECTOR_SIZE * 19);
 	if (fileSize > 0) {
-		// Open file and map memory
+		// Create new file to be written
 		int fd2 = open(argv[2], O_RDWR | O_CREAT, 0666);
 		if (fd2 < 0) {
 			printf("Error: failed to open file\n");
 			exit(1);
 		}
 
+		// Seek to the last byte and write \0 to "stretch" the file
 		int result = lseek(fd2, fileSize-1, SEEK_SET);
 		if (result == -1) {
+			munmap(p, buf.st_size);
+			close(fd);
 			close(fd2);
-			printf("Error: failed to seek to end of file");
+			printf("Error: failed to seek to end of file\n");
 			exit(1);
 		}
-
 		result = write(fd2, "", 1);
 		if (result != 1) {
+			munmap(p, buf.st_size);
+			close(fd);
 			close(fd2);
-			printf("Error: failed to write last byte");
+			printf("Error: failed to write last byte\n");
 			exit(1);
 		}
 
-		char* p2 = mmap(NULL, fileSize, PROT_READ | PROT_WRITE, MAP_SHARED, fd2, 0);
+		// Map memory for file to be written
+		char* p2 = mmap(NULL, fileSize, PROT_WRITE, MAP_SHARED, fd2, 0);
 		if (p2 == MAP_FAILED) {
 			printf("Error: failed to map file memory\n");
 			exit(1);
 		}
 
-		// int i;
-		// for (i = 0; i < fileSize; i++) {
-		// 	printf("%c\n", p2[i]);
-		// }
-
-		// char* source;
-		// char* destination;
-		// int fileSize = getFileSize;
-		// int* firstLogicalSector;
-		// int physicalAddress;
-		// copyFile(source, destination, fileSize, firstLogicalSector, physicalAddress);
+		int firstLogicalSector = getFirstLogicalSector(argv[2], p + SECTOR_SIZE * 19);
+		int physicalAddress = (firstLogicalSector + 31) * SECTOR_SIZE;
+		copyFile(p, p2, fileSize, firstLogicalSector, physicalAddress);
 
 		munmap(p2, fileSize);
 		close(fd2);
