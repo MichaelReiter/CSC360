@@ -75,6 +75,7 @@ int getTotalSize(char* p) {
 	Returns the number of files in the root directory
 */
 int getNumberOfRootFiles(char* p) {
+	p += SECTOR_SIZE * 19;
 	int count = 0;
 
 	while (p[0] != 0x00) {
@@ -148,8 +149,8 @@ int main(int argc, char* argv[]) {
 	char* diskLabel = malloc(sizeof(char));
 	getDiskLabel(diskLabel, p);
 	int diskSize = getTotalSize(p);
-	int freeSize = getFreeSize(diskSize, p);
-	int numberOfRootFiles = getNumberOfRootFiles(p + SECTOR_SIZE * 19);
+	int freeSize = getFreeDiskSize(diskSize, p);
+	int numberOfRootFiles = getNumberOfRootFiles(p);
 	int numberOfFatCopies = getNumberOfFatCopies(p);
 	int sectorsPerFat = getSectorsPerFat(p);
 	printInfo(osName, diskLabel, diskSize, freeSize, numberOfRootFiles, numberOfFatCopies, sectorsPerFat);
