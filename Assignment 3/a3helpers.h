@@ -17,4 +17,5 @@ typedef struct disk_file_t {
 /* ---------- Helper functions ---------- */
 
 int getFatEntry(int n, char* p);
-int getFreeSize(int diskSize, char* p);
+int getFreeDiskSize(int diskSize, char* p);
+int getFileSize(char* fileName, char* p);
