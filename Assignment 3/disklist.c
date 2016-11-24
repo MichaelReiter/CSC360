@@ -7,6 +7,7 @@
 */
 
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -17,31 +18,17 @@
 /* ---------- Helper functions ---------- */
 
 /*
-	n: a 32 bit unsigned integer to convert
-	Returns an integer converted to either big or little endian
-*/
-int endianSwap(int n) {
-	return ((n >> 24) & 0xff)    |
-         ((n << 8) & 0xff0000) |
-         ((n >> 8) & 0xff00)   |
-         ((n << 24) & 0xff000000);
-}
-
-/*
 	p: a pointer to the mapped memory
 	Prints the disk image directory listing
 */
 void printDirectoryListing(char* p) {
 	while (p[0] != 0x00) {
-
 		char fileType;
 		if ((p[11] & 0b00010000) == 0b00010000) {
 			fileType = 'D';
 		} else {
 			fileType = 'F';
 		}
-
-		int fileSize = (p[28]) + (p[29] << 8) + (p[30] << 16) + (p[31] << 24);
 
 		char* fileName = malloc(sizeof(char));
 		int i;
@@ -57,13 +44,18 @@ void printDirectoryListing(char* p) {
 			fileExtension[i] = p[i+8];
 		}
 
+		strcat(fileName, ".");
+		strcat(fileName, fileExtension);
+		
+		int fileSize = getFileSize(fileName, p);
+
 		int year = (((p[17] & 0b11111110)) >> 1) + 1980;
 		int month = ((p[16] & 0b11100000) >> 5) + (((p[17] & 0b00000001)) << 3);
 		int day = (p[16] & 0b00011111);
 		int hour = (p[15] & 0b11111000) >> 3;
 		int minute = ((p[14] & 0b11100000) >> 5) + ((p[15] & 0b00000111) << 3);
 		if ((p[11] & 0b00000010) == 0 && (p[11] & 0b00001000) == 0) {
-			printf("%c %10d %20s.%s %d-%d-%d %02d:%02d\n", fileType, fileSize, fileName, fileExtension, year, month, day, hour, minute);
+			printf("%c %10d %20s %d-%d-%d %02d:%02d\n", fileType, fileSize, fileName, year, month, day, hour, minute);
 		}
 
 		free(fileName);
