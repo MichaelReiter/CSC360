@@ -17,36 +17,63 @@
 /* ---------- Helper functions ---------- */
 
 /*
+	fileName: the name of the file in the updated entry
+	p: a pointer to the mapped memory
+	Adds an entry for fileName in the disk image root directory
+*/
+void updateRootDirectory(char* fileName, char* p) {
+	// Find free root dir address
+	// Create entry in root directory
+	// Correctly set entry datetime attribute
+}
+
+/*
+	p: a pointer to the mapped memory
+	Returns the next index in the FAT containing 0x00 (free)
+*/
+int getNextFreeFatIndex(char* p) {
+
+}
+
+/*
+	n: the FAT entry to update
+	value: the value to set FAT at index n
+	p: a pointer to the mapped memory
+	Sets FAT at entry n to value
+*/
+void setFatIndex(int n, int value, char* p) {
+
+}
+
+/*
 	p: a pointer to the mapped memory
 	p2: a pointer to the mapped file to write to
 	fileName: the file to copy from the disk image
+	fileSize: the size in bytes of the file to copy
 	Writes a file from a disk image to the local directory
 */
-void copyFile(char* p, char* p2, char* fileName) {
-	// // Create entry in root directory
-	// // Correctly set entry datetime attribute
+void copyFile(char* p, char* p2, char* fileName, int fileSize) {
+	updateRootDirectory(fileName, p);
 
-	// // Copy each sector and update FAT table
+	int bytesRemaining = fileSize;
+	int current = getNextFreeFatIndex(p);
 
-	// int firstLogicalSector = getFirstLogicalSector(fileName, p + SECTOR_SIZE * 19);
-	// int n = firstLogicalSector;
-	// int fileSize = getFileSize(fileName, p);
-	// int bytesRemaining = fileSize;
-	// int physicalAddress = SECTOR_SIZE * (31 + n);
-
-	// do {
-	// 	n = (bytesRemaining == fileSize) ? firstLogicalSector : getFatEntry(n, p);
-	// 	physicalAddress = SECTOR_SIZE * (31 + n);
-
-	// 	int i;
-	// 	for (i = 0; i < SECTOR_SIZE; i++) {
-	// 		if (bytesRemaining == 0) {
-	// 			break;
-	// 		}
-	// 		p2[fileSize - bytesRemaining] = p[i + physicalAddress];
-	// 		bytesRemaining--;
-	// 	}
-	// } while (getFatEntry(n, p) != 0xFFF);
+	while (bytesRemaining != 0) {
+		int physicalAddress = SECTOR_SIZE * (31 + current);
+		
+		int i;
+		for (i = 0; i < SECTOR_SIZE; i++) {
+			if (bytesRemaining == 0) {
+				setFatIndex(current, 0xFFF, p);
+				return;
+			}
+			p[i + physicalAddress] = p2[fileSize - bytesRemaining];
+			bytesRemaining--;
+		}
+		int next = getNextFreeFatIndex(p);
+		setFatIndex(current, next, p);
+		current = next;
+	}
 }
 
 /* ---------- Main ---------- */
