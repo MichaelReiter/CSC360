@@ -18,39 +18,36 @@
 
 /*
 	p: a pointer to the mapped memory
-	file: a pointer to the mapped file to write to
-	fileSize: the size of file in bytes
-	Reads a file from a disk image
+	p2: a pointer to the mapped file to write to
+	fileName: the file to copy from the disk image
+	Writes a file from a disk image to the local directory
 */
-void copyFile(char* source, char* destination, int fileSize, int firstLogicalSector, int physicalAddress) {
-	int count = 0;
+void copyFile(char* p, char* p2, char* fileName) {
+	int firstLogicalSector = getFirstLogicalSector(fileName, p + SECTOR_SIZE * 19);
 	int n = firstLogicalSector;
+	int fileSize = getFileSize(fileName, p);
+	int bytesRemaining = fileSize;
+	int physicalAddress = SECTOR_SIZE * (firstLogicalSector + 31);
 
-	// copy the first 512 bytes from the first logical address
 	int i;
 	for (i = 0; i < SECTOR_SIZE; i++) {
-		if (count == fileSize) {
+		if (bytesRemaining == 0) {
 			return;
 		}
-		destination[count] = source[physicalAddress + i];
-		count++;
+		p2[fileSize - bytesRemaining] = p[i + physicalAddress];
+		bytesRemaining--;
 	}
 
-	// while the FAT table does not have an end of file value
-	// read in another 512 bytes from the physical address
-	while (getFatEntry(n, source) != 0xFFF) {
-		// get the value from the next FAT entry
-		n = getFatEntry(n, source);
-		// do the necesary math to get the physical address from the logical address
+	while (getFatEntry(n, p) != 0xFFF) {
+		n = getFatEntry(n, p);
 		physicalAddress = SECTOR_SIZE * (31 + n);
 
 		for (i = 0; i < SECTOR_SIZE; i++) {
-			// check to see if we have read all bytes from the input file
-			if (count == fileSize) {
+			if (bytesRemaining == 0) {
 				break;
 			}
-			destination[count] = source[physicalAddress + i];
-			count++;
+			p2[fileSize - bytesRemaining] = p[i + physicalAddress];
+			bytesRemaining--;
 		}
 	}
 }
@@ -114,9 +111,8 @@ int main(int argc, char* argv[]) {
 			exit(1);
 		}
 
-		int firstLogicalSector = getFirstLogicalSector(argv[2], p + SECTOR_SIZE * 19);
-		int physicalAddress = (firstLogicalSector + 31) * SECTOR_SIZE;
-		copyFile(p, p2, fileSize, firstLogicalSector, physicalAddress);
+		// Copy file from disk image to local directory
+		copyFile(p, p2, argv[2]);
 
 		munmap(p2, fileSize);
 		close(fd2);
