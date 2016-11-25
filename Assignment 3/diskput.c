@@ -39,7 +39,7 @@ void updateRootDirectory(char* fileName, int fileSize, char* p) {
 	}
 
 	// Set attributes
-	p[11] = 0;
+	p[11] = 0x00;
 
 	// Set create date/time
 
@@ -55,10 +55,10 @@ void updateRootDirectory(char* fileName, int fileSize, char* p) {
 	p[17] = 0xFF;
 
 	// Set fileSize
-	p[28] = (fileSize && 0x000000FF);
-	p[29] = (fileSize && 0x0000FF00) >> 8;
-	p[30] = (fileSize && 0x00FF0000) >> 16;
-	p[31] = (fileSize && 0xFF000000) >> 24;
+	p[28] = (fileSize & 0x000000FF);
+	p[29] = (fileSize & 0x0000FF00) >> 8;
+	p[30] = (fileSize & 0x00FF0000) >> 16;
+	p[31] = (fileSize & 0xFF000000) >> 24;
 }
 
 /*
@@ -66,7 +66,14 @@ void updateRootDirectory(char* fileName, int fileSize, char* p) {
 	Returns the next index in the FAT containing 0x00 (free)
 */
 int getNextFreeFatIndex(char* p) {
+	p += SECTOR_SIZE;
 
+	int n = 0;
+	while (getFatEntry(n, p) != 0x000) {
+		n = getFatEntry(n, p);
+	}
+
+	return n;
 }
 
 /*
@@ -164,7 +171,7 @@ int main(int argc, char* argv[]) {
 	int totalDiskSize = getTotalDiskSize(p);
 	int freeDiskSize = getFreeDiskSize(totalDiskSize, p);
 	if (freeDiskSize >= fileSize) {
-		copyFile(p, p2, argv[2]);
+		copyFile(p, p2, argv[2], fileSize);
 	} else {
 		printf("Not enough free space in the disk image.\n");
 	}
