@@ -27,6 +27,16 @@ int getFatEntry(int n, char* p) {
 }
 
 /*
+	p: a pointer to the mapped memory
+	Returns total disk size
+*/
+int getTotalDiskSize(char* p) {
+	int bytesPerSector = p[11] + (p[12] << 8);
+	int totalSectorCount = p[19] + (p[20] << 8);
+	return bytesPerSector * totalSectorCount;
+}
+
+/*
 	diskSize: the total amount of bytes on disk
 	p: a pointer to the mapped memory
 	Returns the amount of free space on disk

@@ -62,16 +62,6 @@ void getDiskLabel(char* diskLabel, char* p) {
 
 /*
 	p: a pointer to the mapped memory
-	Returns total disk size
-*/
-int getTotalSize(char* p) {
-	int bytesPerSector = p[11] + (p[12] << 8);
-	int totalSectorCount = p[19] + (p[20] << 8);
-	return bytesPerSector * totalSectorCount;
-}
-
-/*
-	p: a pointer to the mapped memory
 	Returns the number of files in the root directory
 */
 int getNumberOfRootFiles(char* p) {
@@ -148,7 +138,7 @@ int main(int argc, char* argv[]) {
 	getOsName(osName, p);
 	char* diskLabel = malloc(sizeof(char));
 	getDiskLabel(diskLabel, p);
-	int diskSize = getTotalSize(p);
+	int diskSize = getTotalDiskSize(p);
 	int freeSize = getFreeDiskSize(diskSize, p);
 	int numberOfRootFiles = getNumberOfRootFiles(p);
 	int numberOfFatCopies = getNumberOfFatCopies(p);
