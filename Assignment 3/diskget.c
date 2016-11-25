@@ -27,21 +27,13 @@ void copyFile(char* p, char* p2, char* fileName) {
 	int n = firstLogicalSector;
 	int fileSize = getFileSize(fileName, p);
 	int bytesRemaining = fileSize;
-	int physicalAddress = SECTOR_SIZE * (firstLogicalSector + 31);
+	int physicalAddress = SECTOR_SIZE * (31 + n);
 
-	int i;
-	for (i = 0; i < SECTOR_SIZE; i++) {
-		if (bytesRemaining == 0) {
-			return;
-		}
-		p2[fileSize - bytesRemaining] = p[i + physicalAddress];
-		bytesRemaining--;
-	}
-
-	while (getFatEntry(n, p) != 0xFFF) {
-		n = getFatEntry(n, p);
+	do {
+		n = (bytesRemaining == fileSize) ? firstLogicalSector : getFatEntry(n, p);
 		physicalAddress = SECTOR_SIZE * (31 + n);
 
+		int i;
 		for (i = 0; i < SECTOR_SIZE; i++) {
 			if (bytesRemaining == 0) {
 				break;
@@ -49,7 +41,7 @@ void copyFile(char* p, char* p2, char* fileName) {
 			p2[fileSize - bytesRemaining] = p[i + physicalAddress];
 			bytesRemaining--;
 		}
-	}
+	} while (getFatEntry(n, p) != 0xFFF);
 }
 
 /* ---------- Main ---------- */
