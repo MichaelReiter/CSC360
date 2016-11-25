@@ -66,6 +66,7 @@ int main(int argc, char* argv[]) {
 	char* p = mmap(NULL, buf.st_size, PROT_READ, MAP_SHARED, fd, 0);
 	if (p == MAP_FAILED) {
 		printf("Error: failed to map disk image memory\n");
+		close(fd);
 		exit(1);
 	}
 
@@ -75,6 +76,7 @@ int main(int argc, char* argv[]) {
 		int fd2 = open(argv[2], O_RDWR | O_CREAT, 0666);
 		if (fd2 < 0) {
 			printf("Error: failed to open file\n");
+			close(fd);
 			exit(1);
 		}
 
