@@ -18,13 +18,47 @@
 
 /*
 	fileName: the name of the file in the updated entry
+	fileSize: the size in bytes of the file to copy
 	p: a pointer to the mapped memory
 	Adds an entry for fileName in the disk image root directory
 */
-void updateRootDirectory(char* fileName, char* p) {
+void updateRootDirectory(char* fileName, int fileSize, char* p) {
 	// Find free root dir address
-	// Create entry in root directory
-	// Correctly set entry datetime attribute
+	p += SECTOR_SIZE * 19;
+	while (p[0] != 0x00) {
+		p += 32;
+	}
+
+	// Set filename and extension
+	int i;
+	for (i = 0; i < 8; i++) {
+		p[i] = fileName[i];
+	}
+	for (i = 0; i < 3; i++) {
+		p[i+8] = fileName[i+9];
+	}
+
+	// Set attributes
+	p[11] = 0;
+
+	// Set create date/time
+
+	// int year = (((p[17] & 0b11111110)) >> 1) + 1980;
+	// int month = ((p[16] & 0b11100000) >> 5) + (((p[17] & 0b00000001)) << 3);
+	// int day = (p[16] & 0b00011111);
+	// int hour = (p[15] & 0b11111000) >> 3;
+	// int minute = ((p[14] & 0b11100000) >> 5) + ((p[15] & 0b00000111) << 3);
+
+	p[14] = 0xFF;
+	p[15] = 0xFF;
+	p[16] = 0xFF;
+	p[17] = 0xFF;
+
+	// Set fileSize
+	p[28] = (fileSize && 0x000000FF);
+	p[29] = (fileSize && 0x0000FF00) >> 8;
+	p[30] = (fileSize && 0x00FF0000) >> 16;
+	p[31] = (fileSize && 0xFF000000) >> 24;
 }
 
 /*
@@ -41,8 +75,16 @@ int getNextFreeFatIndex(char* p) {
 	p: a pointer to the mapped memory
 	Sets FAT at entry n to value
 */
-void setFatIndex(int n, int value, char* p) {
+void setFatEntry(int n, int value, char* p) {
+	p += SECTOR_SIZE;
 
+	if ((n % 2) == 0) {
+		p[SECTOR_SIZE + ((3*n) / 2) + 1] = (value >> 8) & 0x0F;
+		p[SECTOR_SIZE + ((3*n) / 2)] = value & 0xFF;
+	} else {
+		p[SECTOR_SIZE + (int)((3*n) / 2)] = (value << 4) & 0xF0;
+		p[SECTOR_SIZE + (int)((3*n) / 2) + 1] = (value >> 4) & 0xFF;
+	}
 }
 
 /*
@@ -53,7 +95,7 @@ void setFatIndex(int n, int value, char* p) {
 	Writes a file from a disk image to the local directory
 */
 void copyFile(char* p, char* p2, char* fileName, int fileSize) {
-	updateRootDirectory(fileName, p);
+	updateRootDirectory(fileName, fileSize, p);
 
 	int bytesRemaining = fileSize;
 	int current = getNextFreeFatIndex(p);
@@ -64,14 +106,14 @@ void copyFile(char* p, char* p2, char* fileName, int fileSize) {
 		int i;
 		for (i = 0; i < SECTOR_SIZE; i++) {
 			if (bytesRemaining == 0) {
-				setFatIndex(current, 0xFFF, p);
+				setFatEntry(current, 0xFFF, p);
 				return;
 			}
 			p[i + physicalAddress] = p2[fileSize - bytesRemaining];
 			bytesRemaining--;
 		}
 		int next = getNextFreeFatIndex(p);
-		setFatIndex(current, next, p);
+		setFatEntry(current, next, p);
 		current = next;
 	}
 }
