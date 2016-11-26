@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <time.h>
 #include "a3helpers.h"
 
 /* ---------- Helper functions ---------- */
@@ -31,28 +32,40 @@ void updateRootDirectory(char* fileName, int fileSize, char* p) {
 
 	// Set filename and extension
 	int i;
+	int done = -1;
 	for (i = 0; i < 8; i++) {
-		p[i] = fileName[i];
+		char character = fileName[i];
+		if (character == '.') {
+			done = i;
+		}
+		p[i] = (done == -1) ? character : ' ';
 	}
 	for (i = 0; i < 3; i++) {
-		p[i+8] = fileName[i+9];
+		p[i+8] = fileName[i+done+1];
 	}
 
 	// Set attributes
 	p[11] = 0x00;
 
 	// Set create date/time
-
-	// int year = (((p[17] & 0b11111110)) >> 1) + 1980;
-	// int month = ((p[16] & 0b11100000) >> 5) + (((p[17] & 0b00000001)) << 3);
-	// int day = (p[16] & 0b00011111);
-	// int hour = (p[15] & 0b11111000) >> 3;
-	// int minute = ((p[14] & 0b11100000) >> 5) + ((p[15] & 0b00000111) << 3);
-
-	p[14] = 0xFF;
-	p[15] = 0xFF;
-	p[16] = 0xFF;
-	p[17] = 0xFF;
+	time_t t = time(NULL);
+	struct tm *now = localtime(&t);
+	int year = now->tm_year + 1900;
+	int month = (now->tm_mon + 1);
+	int day = now->tm_mday;
+	int hour = now->tm_hour;
+	int minute = now->tm_min;
+	p[14] = 0;
+	p[15] = 0;
+	p[16] = 0;
+	p[17] = 0;
+	p[17] |= (year - 1980) << 1;
+	p[17] |= (month - ((p[16] & 0b11100000) >> 5)) >> 3;
+	p[16] |= (month - (((p[17] & 0b00000001)) << 3)) << 5;
+	p[16] |= (day & 0b00011111);
+	p[15] |= (hour << 3) & 0b11111000;
+	p[15] |= (minute - ((p[14] & 0b11100000) >> 5)) >> 3;
+	p[14] |= (minute - ((p[15] & 0b00000111) << 3)) << 5;
 
 	// Set fileSize
 	p[28] = (fileSize & 0x000000FF);
@@ -144,7 +157,7 @@ int main(int argc, char* argv[]) {
 	}
 	struct stat buf;
 	fstat(fd, &buf);
-	char* p = mmap(NULL, buf.st_size, PROT_READ, MAP_SHARED, fd, 0);
+	char* p = mmap(NULL, buf.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	if (p == MAP_FAILED) {
 		printf("Error: failed to map disk image memory\n");
 		close(fd);
