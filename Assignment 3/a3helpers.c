@@ -83,8 +83,8 @@ int getFileSize(char* fileName, char* p) {
 				return fileSize;
 			}
 
-			free(currentFileName);
-			free(currentFileExtension);
+			// free(currentFileName);
+			// free(currentFileExtension);
 		}
 		p += 32;
 	}
@@ -119,8 +119,8 @@ int getFirstLogicalSector(char* fileName, char* p) {
 				return (p[26]) + (p[27] << 8);
 			}
 
-			free(currentFileName);
-			free(currentFileExtension);
+			// free(currentFileName);
+			// free(currentFileExtension);
 		}
 		p += 32;
 	}
@@ -155,8 +155,8 @@ int diskContainsFile(char* fileName, char* p) {
 				return TRUE;
 			}
 
-			free(currentFileName);
-			free(currentFileExtension);
+			// free(currentFileName);
+			// free(currentFileExtension);
 		}
 		p += 32;
 	}

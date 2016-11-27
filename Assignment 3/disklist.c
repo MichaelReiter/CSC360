@@ -58,8 +58,8 @@ void printDirectoryListing(char* p) {
 			printf("%c %10d %20s %d-%d-%d %02d:%02d\n", fileType, fileSize, fileName, year, month, day, hour, minute);
 		}
 
-		free(fileName);
-		free(fileExtension);
+		// free(fileName);
+		// free(fileExtension);
 
 		p += 32;
 	}
