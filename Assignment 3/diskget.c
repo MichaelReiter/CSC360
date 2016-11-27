@@ -25,7 +25,7 @@
 void copyFile(char* p, char* p2, char* fileName) {
 	int firstLogicalSector = getFirstLogicalSector(fileName, p + SECTOR_SIZE * 19);
 	int n = firstLogicalSector;
-	int fileSize = getFileSize(fileName, p);
+	int fileSize = getFileSize(fileName, p + SECTOR_SIZE * 19);
 	int bytesRemaining = fileSize;
 	int physicalAddress = SECTOR_SIZE * (31 + n);
 
