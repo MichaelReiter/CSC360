@@ -126,3 +126,39 @@ int getFirstLogicalSector(char* fileName, char* p) {
 	}
 	return -1;
 }
+
+/*
+	fileName: the file to check for
+	p: a pointer to the mapped memory
+	Returns TRUE if the disk contains a file called fileName, FALSE otherwise
+*/
+int diskContainsFile(char* fileName, char* p) {
+	while (p[0] != 0x00) {
+		if ((p[11] & 0b00000010) == 0 && (p[11] & 0b00001000) == 0) {
+			char* currentFileName = malloc(sizeof(char));
+			char* currentFileExtension = malloc(sizeof(char));
+			int i;
+			for (i = 0; i < 8; i++) {
+				if (p[i] == ' ') {
+					break;
+				}
+				currentFileName[i] = p[i];
+			}
+			for (i = 0; i < 3; i++) {
+				currentFileExtension[i] = p[i+8];
+			}
+
+			strcat(currentFileName, ".");
+			strcat(currentFileName, currentFileExtension);
+
+			if (strcmp(fileName, currentFileName) == 0) {
+				return TRUE;
+			}
+
+			free(currentFileName);
+			free(currentFileExtension);
+		}
+		p += 32;
+	}
+	return FALSE;
+}

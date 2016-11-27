@@ -21,3 +21,4 @@ int getTotalDiskSize(char* p);
 int getFreeDiskSize(int diskSize, char* p);
 int getFileSize(char* fileName, char* p);
 int getFirstLogicalSector(char* fileName, char* p);
+int diskContainsFile(char* fileName, char* p);
