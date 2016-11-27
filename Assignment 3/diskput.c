@@ -23,7 +23,7 @@
 	p: a pointer to the mapped memory
 	Adds an entry for fileName in the disk image root directory
 */
-void updateRootDirectory(char* fileName, int fileSize, char* p) {
+void updateRootDirectory(char* fileName, int fileSize, int firstLogicalSector, char* p) {
 	// Find free root dir address
 	p += SECTOR_SIZE * 19;
 	while (p[0] != 0x00) {
@@ -67,6 +67,10 @@ void updateRootDirectory(char* fileName, int fileSize, char* p) {
 	p[15] |= (minute - ((p[14] & 0b11100000) >> 5)) >> 3;
 	p[14] |= (minute - ((p[15] & 0b00000111) << 3)) << 5;
 
+	// Set first logical cluster
+	p[26] = (firstLogicalSector - (p[27] << 8)) & 0xFF;
+	p[27] = (firstLogicalSector - p[26]) >> 8;
+
 	// Set fileSize
 	p[28] = (fileSize & 0x000000FF);
 	p[29] = (fileSize & 0x0000FF00) >> 8;
@@ -81,9 +85,9 @@ void updateRootDirectory(char* fileName, int fileSize, char* p) {
 int getNextFreeFatIndex(char* p) {
 	p += SECTOR_SIZE;
 
-	int n = 0;
+	int n = 2;
 	while (getFatEntry(n, p) != 0x000) {
-		n = getFatEntry(n, p);
+		n++;
 	}
 
 	return n;
@@ -115,27 +119,29 @@ void setFatEntry(int n, int value, char* p) {
 	Writes a file from a disk image to the local directory
 */
 void copyFile(char* p, char* p2, char* fileName, int fileSize) {
-	updateRootDirectory(fileName, fileSize, p);
+	if (!diskContainsFile(fileName, p + SECTOR_SIZE * 19)) {
+		int bytesRemaining = fileSize;
+		int current = getNextFreeFatIndex(p);
+		updateRootDirectory(fileName, fileSize, current, p);
 
-	int bytesRemaining = fileSize;
-	int current = getNextFreeFatIndex(p);
-
-	while (bytesRemaining != 0) {
-		int physicalAddress = SECTOR_SIZE * (31 + current);
-		
-		int i;
-		for (i = 0; i < SECTOR_SIZE; i++) {
-			if (bytesRemaining == 0) {
-				setFatEntry(current, 0xFFF, p);
-				return;
+		while (bytesRemaining > 0) {
+			int physicalAddress = SECTOR_SIZE * (31 + current);
+			
+			int i;
+			for (i = 0; i < SECTOR_SIZE; i++) {
+				if (bytesRemaining == 0) {
+					setFatEntry(current, 0xFFF, p);
+					return;
+				}
+				p[i + physicalAddress] = p2[fileSize - bytesRemaining];
+				bytesRemaining--;
 			}
-			p[i + physicalAddress] = p2[fileSize - bytesRemaining];
-			bytesRemaining--;
+			setFatEntry(current, 0x69, p);
+			int next = getNextFreeFatIndex(p);
+			setFatEntry(current, next, p);
+			current = next;
 		}
-		int next = getNextFreeFatIndex(p);
-		setFatEntry(current, next, p);
-		current = next;
-	}
+	} 
 }
 
 /* ---------- Main ---------- */
@@ -186,6 +192,7 @@ int main(int argc, char* argv[]) {
 	if (freeDiskSize >= fileSize) {
 		copyFile(p, p2, argv[2], fileSize);
 	} else {
+		printf("%d %d\n", freeDiskSize, fileSize);
 		printf("Not enough free space in the disk image.\n");
 	}
 
